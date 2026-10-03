@@ -71,10 +71,17 @@ def main():
             case = batch / f'{variant}_{sequence}'
             state_path = case / 'status.json'
             state = json.loads(state_path.read_text()) if state_path.exists() else {'state': 'not started'}
-            if state['state'] != 'complete':
+            if state['state'] not in ('complete', 'complete_unscorable'):
                 pending.append({'sequence': sequence, 'variant': variant, 'state': state['state']})
                 continue
-            row = read_score(Path(state['result']['run']), sequence, variant)
+            if state['state'] == 'complete':
+                row = read_score(Path(state['result']['run']), sequence, variant)
+            else:
+                diagnostic = state['result']
+                row = {key: diagnostic[key] for key in ('run', 'Score2D', 'retained_maps', 'selected_poses', 'atlas_poses', 'evaluation_status')}
+                row.update(sequence=sequence, variant=variant,
+                           native_coverage=diagnostic['input_coverage']['pose_coverage_fraction'],
+                           CP_triangulated=None, CP_total=None)
             row['online_diagnostics'] = state['result']
             row['runtime_seconds'] = state['replay']['elapsed_seconds']
             manifest = json.loads((Path(row['run']) / 'config/build_manifest.json').read_text())
@@ -83,7 +90,7 @@ def main():
 
     winners = {}
     for sequence in ('medium', 'long'):
-        available = [row for row in rows if row['sequence'] == sequence]
+        available = [row for row in rows if row['sequence'] == sequence and row['Score2D'] is not None]
         winners[sequence] = max(available, key=lambda row: row['Score2D'])['variant']
     result = {'results': rows, 'incomplete': pending, 'highest_observed_score_in_batch': winners,
               'caveats': ['One replay per candidate; asynchronous mapping/BA can affect results.',
@@ -103,11 +110,15 @@ def main():
                 for ax in axes[:, col]:
                     ax.text(i, 5, 'Incomplete', ha='center', fontsize=9, color='0.4', rotation=90)
                 continue
-            axes[0, col].bar(i, row['Score2D'], color=colors[i])
-            axes[0, col].text(i, row['Score2D'] + 1, f'{row["Score2D"]:.2f}', ha='center')
+            if row['Score2D'] is not None:
+                axes[0, col].bar(i, row['Score2D'], color=colors[i])
+                axes[0, col].text(i, row['Score2D'] + 1, f'{row["Score2D"]:.2f}', ha='center')
+            else:
+                axes[0, col].text(i, 5, 'Unscorable\nCP alignment failed', ha='center', fontsize=9, rotation=90)
             axes[1, col].bar(i, 100 * row['native_coverage'], color=colors[i])
+            cp_label = f'CP {row["CP_triangulated"]}/{row["CP_total"]}' if row['Score2D'] is not None else 'No CP alignment'
             axes[1, col].text(i, 100 * row['native_coverage'] + 1,
-                             f'{row["retained_maps"]} maps\nCP {row["CP_triangulated"]}/{row["CP_total"]}',
+                             f'{row["retained_maps"]} maps\n{cp_label}',
                              ha='center', fontsize=9)
         axes[0, col].set(title=sequence.title(), ylabel='Official local Score2D', ylim=(0, 105))
         axes[1, col].set(ylabel='Native poses in scored map [%]', ylim=(0, 116))
@@ -132,7 +143,7 @@ def main():
             ax = axes[row_index, col]
             ax.plot(gt[:, 0], gt[:, 1], color='0.7', lw=2, label='Full GT')
             row = by_key.get((sequence, variant))
-            if row is not None:
+            if row is not None and row['Score2D'] is not None:
                 path = Path(row['score_path'])
                 score = json.loads(path.read_text())
                 sim = score['CP_sim3']
@@ -144,6 +155,8 @@ def main():
                     ax.plot(xyz[ids, 0], xyz[ids, 1], color=colors[col], lw=1,
                             label='Scored map' if i == 0 else None)
                 ax.set_title(f'{sequence.title()} / {LABELS[col]}\n{row["Score2D"]:.2f}, {row["retained_maps"]} maps')
+            elif row is not None:
+                ax.set_title(f'{sequence.title()} / {LABELS[col]}\nNo CP alignment; {row["retained_maps"]} maps')
             else:
                 ax.set_title(f'{sequence.title()} / {LABELS[col]}\nIncomplete')
             ax.set_aspect('equal', adjustable='datalim')

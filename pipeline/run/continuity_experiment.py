@@ -156,6 +156,49 @@ def diagnostics(case, plan, label):
     return result
 
 
+def unscorable_diagnostics(case, plan, label):
+    """Keep completed estimator failures visible without inventing an alignment."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import numpy as np
+    run = Path(plan['run_directory'])
+    provenance = json.loads((run / 'lamaria_score/provenance.json').read_text())
+    coverage = json.loads((run / 'coverage.json').read_text())
+    with next(run.glob('online_*.csv')).open() as handle:
+        rows = list(csv.DictReader(handle))
+    elapsed = np.array([float(row['input_t_s']) for row in rows])
+    elapsed -= elapsed[0]
+    keys = [(row['map_id'], row['map_init_kf_id']) for row in rows]
+    unique = {key: i for i, key in enumerate(dict.fromkeys(keys))}
+    fig, axes = plt.subplots(3, 1, figsize=(14, 8), sharex=True, constrained_layout=True)
+    axes[0].plot(elapsed, [int(row['inliers']) for row in rows], lw=.6)
+    axes[0].set_ylabel('Online inliers')
+    axes[1].step(elapsed, [unique[key] for key in keys], where='post')
+    axes[1].set_ylabel('Map epoch incl. resets')
+    axes[2].plot(elapsed, [int(row['state']) for row in rows], lw=.7, label='State')
+    axes[2].fill_between(elapsed, 0, [int(row['coasting']) for row in rows], alpha=.3, label='Coasting')
+    axes[2].set(xlabel='Elapsed input time [s]', ylabel='State / coast')
+    axes[2].legend()
+    for axis in axes:
+        axis.grid(alpha=.2)
+    fig.suptitle(label + ': replay completed; official CP alignment failed; no score or GT alignment invented')
+    fig.savefig(case / 'diagnostics.png', dpi=160)
+    plt.close(fig)
+    selection = provenance['trajectory_selection']
+    result = {'label': label, 'run': str(run), 'Score2D': None,
+              'evaluation_status': 'official CP alignment failed',
+              'retained_maps': selection['atlas_map_epochs'],
+              'selected_poses': selection['selected_pose_count'],
+              'atlas_poses': selection['atlas_pose_count'],
+              'input_coverage': provenance['input_coverage'],
+              'online_rows': len(rows), 'online_map_epochs': len(unique),
+              'processed_frames': coverage['input_frames'],
+              'diagnostic_plot': str(case / 'diagnostics.png')}
+    save(case / 'summary.json', result)
+    return result
+
+
 def run_case(args, sequence):
     matrix = json.loads(MATRIX.read_text())
     variant = matrix['variants'][args.variant]
@@ -182,7 +225,17 @@ def run_case(args, sequence):
             state['replay'] = command(case, 'launch', plan['run_command'])
             state.update(state='scoring')
             save(case / 'status.json', state)
-            state['scoring'] = command(case, 'score', plan['score_command'])
+            try:
+                state['scoring'] = command(case, 'score', plan['score_command'])
+            except RuntimeError:
+                if 'Official control-point alignment failed; no score fabricated' not in (case / 'score.log').read_text():
+                    raise
+                state['scoring'] = json.loads((case / 'score.json').read_text())
+                state['result'] = unscorable_diagnostics(case, plan, f'{args.variant} / {sequence}')
+                state.update(state='complete_unscorable', finished=time.time())
+                save(case / 'status.json', state)
+                print('COMPLETE_UNSCORABLE ' + json.dumps(state['result']), flush=True)
+                return
         state['result'] = diagnostics(case, plan, f'{args.variant} / {sequence}')
         state.update(state='complete', finished=time.time())
         save(case / 'status.json', state)
