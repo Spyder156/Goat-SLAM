@@ -1,0 +1,251 @@
+/**
+* This file is part of ORB-SLAM3
+*
+* Copyright (C) 2017-2021 Carlos Campos, Richard Elvira, Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+* Copyright (C) 2014-2016 Raúl Mur-Artal, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+*
+* ORB-SLAM3 is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+* License as published by the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* ORB-SLAM3 is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+* the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with ORB-SLAM3.
+* If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+#ifndef LOCALMAPPING_H
+#define LOCALMAPPING_H
+
+#include "KeyFrame.h"
+#include "Atlas.h"
+#include "LoopClosing.h"
+#include "Tracking.h"
+#include "KeyFrameDatabase.h"
+#include "Settings.h"
+
+#include <mutex>
+#include <atomic>
+
+
+namespace ORB_SLAM3
+{
+
+class MapLine;
+
+class System;
+class Tracking;
+class LoopClosing;
+class Atlas;
+
+class LocalMapping
+{
+public:
+    /// Map-wide line revalidation: for every line, does its stored geometry
+    /// still explain its observations? Repair (multiview, poses FIXED) or
+    /// delete. RetriangulateLines only sweeps the current KF neighbourhood,
+    /// so any line whose keyframes moved later (VIBA re-expression, global
+    /// BA) went stale with nothing left to re-check it -- the audit found
+    /// exactly those as the worst offenders in the SAVED map. Static: called
+    /// from LocalMapping after inertial re-initialisations and from System
+    /// right before the map is saved (threads already down there).
+    static void RevalidateMapLines(Map* pMap, bool bDelete);
+    /// The per-line core: residual over all observations, multiview repair
+    /// with fixed poses (conditioning-checked), fallback widest-pair solve.
+    /// Returns the final worst residual [rad]; NEGATIVE means "insufficient
+    /// observations to judge" -- distinct from a large residual, which means
+    /// judged-and-invalid (1e9 = plane through a camera centre).
+    static float RefineLineFromObservations(MapLine* pML);
+    /// Residual only, NO repair: worst angular distance [rad] of any observed
+    /// endpoint bearing from the line's current predicted plane, across all
+    /// keyframe observations. Negative if fewer than 2 usable observations.
+    static float LineWorstObsResidual(MapLine* pML);
+    /// Can this line's DIRECTION actually be determined from its observation
+    /// planes, against their own noise? The plane residual cannot answer this
+    /// (any direction inside a thin sheaf fits every plane); a line failing
+    /// here has a noise direction and must not be exported as verified.
+    static bool LineDirectionObservable(MapLine* pML);
+
+    /// Lines.outlierCull / Lines.culling in the settings file (default on).
+    /// Off isolates the residual change from the culling passes for A/B tests.
+    static bool skLineOutlierCull;
+    static bool skLineCulling;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    LocalMapping(System* pSys, Atlas* pAtlas, const float bMonocular, bool bInertial, const string &_strSeqName=std::string());
+
+    void SetLoopCloser(LoopClosing* pLoopCloser);
+
+    void SetTracker(Tracking* pTracker);
+
+    // Main function
+    void Run();
+
+    void InsertKeyFrame(KeyFrame* pKF);
+    void EmptyQueue();
+
+    // Thread Synch
+    void RequestStop();
+    void RequestReset();
+    void RequestResetActiveMap(Map* pMap);
+    bool Stop();
+    void Release();
+    bool isStopped();
+    bool stopRequested();
+    bool AcceptKeyFrames();
+    void SetAcceptKeyFrames(bool flag);
+    bool SetNotStop(bool flag);
+
+    void InterruptBA();
+
+    void RequestFinish();
+    bool isFinished();
+
+    int KeyframesInQueue(){
+        unique_lock<std::mutex> lock(mMutexNewKFs);
+        return mlNewKeyFrames.size();
+    }
+
+    bool IsInitializing();
+    double GetCurrKFTime();
+    KeyFrame* GetCurrKF();
+
+    std::mutex mMutexImuInit;
+
+    Eigen::MatrixXd mcovInertial;
+    Eigen::Matrix3d mRwg;
+    Eigen::Vector3d mbg;
+    Eigen::Vector3d mba;
+    double mScale;
+    double mInitTime;
+    double mCostTime;
+
+    unsigned int mInitSect;
+    unsigned int mIdxInit;
+    unsigned int mnKFs;
+    double mFirstTs;
+    int mnMatchesInliers;
+
+    // For debugging (erase in normal mode)
+    int mInitFr;
+    int mIdxIteration;
+    string strSequence;
+
+    bool mbNotBA1;
+    bool mbNotBA2;
+    bool mbBadImu;
+
+    bool mbWriteStats;
+
+    // not consider far points (clouds)
+    bool mbFarPoints;
+    float mThFarPoints;
+
+#ifdef REGISTER_TIMES
+    vector<double> vdKFInsert_ms;
+    vector<double> vdMPCulling_ms;
+    vector<double> vdMPCreation_ms;
+    vector<double> vdLBA_ms;
+    vector<double> vdKFCulling_ms;
+    vector<double> vdLMTotal_ms;
+
+
+    vector<double> vdLBASync_ms;
+    vector<double> vdKFCullingSync_ms;
+    vector<int> vnLBA_edges;
+    vector<int> vnLBA_KFopt;
+    vector<int> vnLBA_KFfixed;
+    vector<int> vnLBA_MPs;
+    int nLBA_exec;
+    int nLBA_abort;
+#endif
+protected:
+
+    bool CheckNewKeyFrames();
+    void ProcessNewKeyFrame();
+    void CreateNewMapPoints();
+
+    void MapPointCulling();
+    /// Line analogue of MapPointCulling (PLVS LocalMapping::MapLineCulling).
+    /// Without it a bad line landmark lives forever: it keeps being drawn,
+    /// keeps entering BA and keeps voting on the pose.
+    void MapLineCulling();
+
+    /// PL-VINS `removeLineOutlier`: delete any line landmark whose WORST
+    /// observation misses its own segment by more than ~3 px, or whose
+    /// endpoints fall behind a camera / span an absurd length.
+    void RemoveLineOutliers();
+    /// Re-solve each line from the WIDEST-parallax pair of its observations
+    /// (PL-VINS picks the best pair instead of the first admissible one).
+    void RetriangulateLines();
+    std::list<MapLine*> mlpRecentAddedMapLines;
+    void SearchInNeighbors();
+    void KeyFrameCulling();
+
+    System *mpSystem;
+
+    bool mbMonocular;
+    bool mbInertial;
+
+    void ResetIfRequested();
+    bool mbResetRequested;
+    bool mbResetRequestedActiveMap;
+    Map* mpMapToReset;
+    std::mutex mMutexReset;
+
+    bool CheckFinish();
+    void SetFinish();
+    bool mbFinishRequested;
+    bool mbFinished;
+    std::mutex mMutexFinish;
+
+    Atlas* mpAtlas;
+
+    LoopClosing* mpLoopCloser;
+    Tracking* mpTracker;
+
+    std::list<KeyFrame*> mlNewKeyFrames;
+
+    KeyFrame* mpCurrentKeyFrame;
+
+    std::list<MapPoint*> mlpRecentAddedMapPoints;
+
+    std::mutex mMutexNewKFs;
+
+    bool mbAbortBA;
+
+    bool mbStopped;
+    bool mbStopRequested;
+    bool mbNotStop;
+    std::mutex mMutexStop;
+
+    bool mbAcceptKeyFrames;
+    std::mutex mMutexAccept;
+
+    void InitializeIMU(float priorG = 1e2, float priorA = 1e6, bool bFirst = false);
+    void ScaleRefinement();
+
+    std::atomic<bool> bInitializing;
+    // Retry proposals as new measurements arrive, rather than on every KF.
+    double mLastMetricInitAttempt = -1.0;
+    unsigned long mLastMetricInitMap = static_cast<unsigned long>(-1);
+
+    Eigen::MatrixXd infoInertial;
+    int mNumLM;
+    int mNumKFCulling;
+
+    float mTinit;
+
+    int countRefinement;
+
+    //DEBUG
+    ofstream f_lm;
+
+    };
+
+} //namespace ORB_SLAM
+
+#endif // LOCALMAPPING_H
