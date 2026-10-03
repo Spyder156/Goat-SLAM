@@ -6,6 +6,8 @@ Status: **2026-10-03**. The frozen baseline implementations are published at **S
 
 Build reliable, complete, metrically accurate dual-fisheye visual-inertial SLAM that beats Meta/Aria under the actual LaMAria protocol. Preserve the strong retained geometry while fixing fragmented trajectories. A good-looking partial map is not success.
 
+**Latest authorization, 2026-10-03:** implement BabyFeatures and run one full Long experiment on `experiments/BabyFeats`. The user's good short-lived correspondences are **tracked passively throughout**, but enter pose estimation **only after normal map tracking fails**. Run their VI bridge during SOS, preserve the established map/metric state, and return to normal estimation once normal map tracking is verified. Original-map reacquisition or explicit promotion of well-supported new landmarks can permit that return. Read `IDEA_POOL.md` for the design and Atlas limits. This supersedes the older discussion-only and no-background-tracking instructions. The isolated implementation is in progress; no new result is claimed yet.
+
 Read `GOAL.md` for the objective and decision rules, `EXPERIMENTS.md` for verified outcomes and exact evidence, and `ROADMAP.md` for hypotheses and proposed work. `README.md` describes the layout; `docs/ARTIFACT_STORAGE.md` explains storage isolation; `docs/LAMARIA_CONTINUITY.txt` describes the historical workflow. **Default launch/build profiles still select the historical continuity baseline, not the best Short v2 candidate. Choose the intended profile explicitly.**
 
 ## What currently works
