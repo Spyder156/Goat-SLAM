@@ -1,0 +1,12 @@
+{
+  "parent_profile": "orbslam3_lamaria_online_full_v2",
+  "variant": "periodic_vi_20261003",
+  "mode_0": "Preserve v2 default behavior",
+  "mode_1": "Full intrinsic calibration with single populated map; fixed-intrinsic full VI after fragmentation",
+  "mode_2": "Periodic fixed-intrinsic full VI from initial BA2 onward",
+  "cadence": "New modes key last trial by (map ID, initial keyframe ID); legacy mode uses original timestamp",
+  "contract": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_periodic_vi_20261003/tests/exact_solver/result.json",
+  "contract_passed": true,
+  "replays_at_creation": "Not yet launched; parent harness owns configured Medium and Long runs",
+  "build_manifest": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_periodic_vi_20261003/build_manifest.json"
+}

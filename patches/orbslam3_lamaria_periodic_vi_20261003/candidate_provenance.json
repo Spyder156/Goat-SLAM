@@ -1,0 +1,6 @@
+{
+  "base": "orbslam3_lamaria_online_full_v2",
+  "purpose": "Periodic fixed-intrinsic full VI; mode 2 is the matched frozen-intrinsic control; mode 1 permits fixed VI after atlas fragmentation; mode 0 unchanged default",
+  "staging": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_periodic_vi_20261003/staging",
+  "base_patch_sha256": "bd9f9c5eb0f664b08f322e928c4e7579b0624e84b901f8da2f2620df2e4aba2d"
+}
