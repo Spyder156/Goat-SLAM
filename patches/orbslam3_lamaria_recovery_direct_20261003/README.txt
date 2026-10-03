@@ -80,3 +80,40 @@ Results:build/orbslam3_lamaria_recovery_direct_20261003/tests/recovery_contract_
 Library SHA256:a9a93d595404894566a1742cda1194b9097429ecad05d54e766f55e5bd9c229e
 The first contract fixture compile required const/reference setup corrections;
 no estimator source changed in response. Final native checks all pass.
+
+Completed full-sequence outcomes (single replay per sequence):
+- Medium: processed all23,746 supported inputs, exit0;7 retained maps,
+  8,320 poses in the scored map (35.03% native-input coverage). Official CP
+  alignment failed, so no numeric score is claimed. No replay or score retry.
+- Long: processed all35,842 inputs, exit0;8 retained maps,22,402 scored poses
+  (62.50% coverage), official Score2D38.941196.18/27 CP reconstructed;
+  6 within1m. Horizontal median1.115m/RMSE1.220m. This single result exceeds
+  frozen v2 Long34.458901 but remains below the historical49.88 baseline;
+  fragmentation is worse, and Medium regresses. Do not promote this profile.
+- Medium recovery:1,051 calls /152 hypothesis objects /76 successful solver
+  returns /12 visual geometry accepts /5 local commits /7 rollbacks.
+- Long recovery:762 calls /46 hypothesis objects /74 successful solver
+  returns (all cam1) /2 visual accepts /2 local commits /0 rollbacks.
+  Solver-return counts include repeated iterations of the same hypothesis.
+- Raw correspondence generation improves in some frames, but most candidate
+  checks still lack15 matches. Successful relatches expose an inherited
+  acceptance mismatch: last-keyframe VI can discard most of the >=50-inlier
+  visual support and still commit via RECENTLY_LOST's default >10 gate.
+  VI already optimizes pose/velocity/bias; these diagnostics do not establish
+  which disagreeing pose is correct. Simply raising10 to15 misses Medium's
+  accepted16/20/21-inlier examples. No new estimator repair was made mid-run.
+
+Per-sequence artifacts:
+  experiments/lamaria_continuity_batch_20261003/recovery_direct_medium/summary.json
+  experiments/lamaria_continuity_batch_20261003/recovery_direct_long/summary.json
+  <case>/diagnostics.png
+  <case>/recovery_diagnostics/{summary.json,recovery_funnel.png,relatch_handoff.png}
+Read-only exact-source handoff trace:
+  experiments/lamaria_continuity_batch_20261003/recovery_direct_medium/recovery_funnel/handoff_source_trace.md
+
+Reproduce diagnostics from a saved replay, without any estimator execution:
+  /home/raghav/miniconda3/envs/lamaria/bin/python \
+    patches/orbslam3_lamaria_recovery_direct_20261003/analyze_recovery.py \
+    --run <saved-run-directory> --out <new-diagnostics-directory>
+The script creates both recovery_funnel.png and relatch_handoff.png, infers
+Medium/Long labels, and optionally accepts --label.

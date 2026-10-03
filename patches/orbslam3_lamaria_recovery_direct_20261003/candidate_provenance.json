@@ -76,5 +76,73 @@
     "comparisons": 9000000
   },
   "library_sha256": "a9a93d595404894566a1742cda1194b9097429ecad05d54e766f55e5bd9c229e",
-  "package_materialization": "Cumulative patch applied to private copy of common baseline; exact byte comparison with staged source passed."
+  "package_materialization": "Cumulative patch applied to private copy of common baseline; exact byte comparison with staged source passed.",
+  "full_replays": {
+    "medium": {
+      "label": "recovery_direct / medium",
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/recovery_direct_medium/runs/recovery_direct_medium_medium_full",
+      "Score2D": null,
+      "evaluation_status": "official CP alignment failed",
+      "retained_maps": 7,
+      "selected_poses": 8320,
+      "atlas_poses": 21551,
+      "input_coverage": {
+        "native_input_frames": 23748,
+        "processed_input_frames": 23746,
+        "unsupported_boundary_frames": 2,
+        "unsupported_boundary_prefix_frames": 0,
+        "unsupported_boundary_suffix_frames": 2,
+        "missing_native_input_poses": 15428,
+        "missing_processed_input_poses": 15426,
+        "pose_coverage_fraction": 0.3503452922351356,
+        "processed_pose_coverage_fraction": 0.3503747999663101,
+        "pose_to_input_max_difference_ns": 0
+      },
+      "online_rows": 23746,
+      "online_map_epochs": 15,
+      "processed_frames": 23746,
+      "diagnostic_plot": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/recovery_direct_medium/diagnostics.png"
+    },
+    "long": {
+      "label": "recovery_direct / long",
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/recovery_direct_long/runs/recovery_direct_long_long_full",
+      "score_path": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/recovery_direct_long/runs/recovery_direct_long_long_full/lamaria_score/scores.json",
+      "Score2D": 38.94119598764629,
+      "CP_triangulated": 18,
+      "CP_total": 27,
+      "CP_within_1m": 6,
+      "GT_associated": 3857,
+      "GT_total": 6118,
+      "retained_maps": 8,
+      "selected_poses": 22402,
+      "atlas_poses": 33859,
+      "native_input_frames": 35842,
+      "scored_pose_coverage": 0.6250209251715864,
+      "CP_sim3_scale": 1.0113368637847717,
+      "horizontal_errors_m": {
+        "median": 1.1147807347538883,
+        "rmse": 1.2204188063297214,
+        "p90": 1.6744267662013483,
+        "maximum": 2.5879918158188864
+      },
+      "online_rows": 35842,
+      "online_map_epochs": 17,
+      "coasted_frames": 762,
+      "tracking_ok_frames": 33770,
+      "log_counters": {
+        "recovery_calls": 762,
+        "recovery_successes": 2,
+        "recovery_hypotheses": 46,
+        "loop_detection_markers": 0,
+        "merge_detection_markers": 0
+      },
+      "diagnostic_plot": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/recovery_direct_long/diagnostics.png"
+    }
+  },
+  "promotion_recommendation": "Do not promote: Medium official alignment fails, Long remains fragmented and below historical best.",
+  "diagnostic_scripts_sha256": {
+    "analyze_recovery.py": "540b5c12e44b84480baba1c22f10ce32d36dfd0bee3e50eca5e1003315cc1ddc",
+    "tests/run_contract.py": "43589c58488ebee9923d30a9007c3fc7917041f420a22ef215057dd8b202e239",
+    "tests/recovery_contract.cpp": "57afa7fcb9678188c949f179dc0c4a8121e8515e0a1a29b4da35d9380848196f"
+  }
 }
