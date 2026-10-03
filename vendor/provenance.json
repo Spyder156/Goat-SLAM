@@ -1,0 +1,17 @@
+{
+  "ORB_SLAM3": {
+    "commit": "8da1194289525c5bb03b5e019cda9510b61a451c",
+    "remote": "https://github.com/UZ-SLAMLab/ORB_SLAM3.git",
+    "dirty": true
+  },
+  "ELSED": {
+    "commit": "1878213b2f5f06a9261d8b1838f53d48e5fd128d",
+    "remote": "https://github.com/iago-suarez/ELSED",
+    "dirty": false
+  },
+  "colmap_src": {
+    "commit": "5dc9bafca1e75997ac9f8226f95c212425f33526",
+    "remote": "https://github.com/colmap/colmap.git",
+    "dirty": true
+  }
+}
