@@ -120,7 +120,47 @@ into the IMU chain, reuse its old preintegration for a different start state,
 or discard IMU history. A large visual correction can be correct, so a hard
 metre jump cap alone would not solve this.
 
+Existing last-keyframe VI already jointly optimizes the current pose, velocity
+and biases. The missing element is a dedicated recovery-window/consistency
+acceptance policy, not the absence of any inertial reconciliation. Starting
+that optimizer from a changed visual pose and inherited temporal state is not
+inherently invalid. Also, all three 16/20/21-inlier examples exceed the normal
+15-inlier gate: changing the recent-loss threshold from >10 to >=15 would not
+reject them. The missing explicit recovery confirmation remains the issue.
+
 This analysis does not establish that the visual hypothesis is correct against
 GT, that calibration is wrong, or that the inherited covariance is numerically
 incorrect. Those remain separate checks. No new recovery-window implementation
 or experiment was started in this batch.
+
+## Long completion confirms the default gate in an actual11-inlier commit
+
+Long completed all35,842 inputs and official Score2D38.941196, with8 retained
+maps and62.50% scored native coverage. Recovery:762 calls,46 hypothesis objects,
+74 successful solver returns (repeated iterations can count the same hypothesis),
+2 geometrically accepted relatches,2 local commits,0 relatch rollbacks.
+
+At t1010.149294925, cam1 PnP recovers84 visual inliers (33 cam0 /51 cam1).
+Local VI enters with39/65 associations, moves0.494549m from the visual pose,
+and keeps11/0. It then commits exactly11 inliers, refreshes lost_since to
+1010.149294925 and exits coast. This dynamically confirms that the >10 early
+RECENTLY_LOST branch bypasses normal stereo's15 threshold. It does not prove
+that either pose is correct or that a stronger threshold alone improves the
+complete trajectory.
+
+At t1766.399313924, cam1 PnP recovers54 visual inliers (18/36); local VI receives
+76/46 associations, moves0.364263m from the visual hypothesis and retains0/30.
+This second transaction also commits and refreshes grace.
+
+Long log:
+`experiments/lamaria_continuity_batch_20261003/recovery_direct_long/runs/recovery_direct_long_long_full/run.log`
+- Lines69279–69283:84→104→11 event, cam1 hypothesis and same-frame commit.
+- Lines127038–127043:54→122→30 event.
+
+Reproducible per-sequence plots and JSON:
+`experiments/lamaria_continuity_batch_20261003/recovery_direct_medium/recovery_diagnostics/`
+`experiments/lamaria_continuity_batch_20261003/recovery_direct_long/recovery_diagnostics/`
+Each contains summary.json, recovery_funnel.png and relatch_handoff.png. Their
+source is `patches/orbslam3_lamaria_recovery_direct_20261003/analyze_recovery.py`.
+The Long handoff plot explicitly shows the11-inlier event and its0.495m
+estimate disagreement, not GT error.

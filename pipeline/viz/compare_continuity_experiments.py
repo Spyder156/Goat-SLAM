@@ -126,14 +126,14 @@ def main():
     result = {'results': rows, 'incomplete': pending, 'highest_observed_score_in_batch': winners,
               'historical_long_reference': historical_long, 'strongest_recorded_including_history': strongest,
               'caveats': ['One replay per candidate; asynchronous mapping/BA can affect results.',
-                          'Frozen v2 references are retained earlier runs, not same-session repeats.',
+                          'Saved v2 references are earlier runs; one unchanged Medium repeat is reported separately. Long was not repeated.',
                           'A and B also share the transactional relatch repair; they are not single-line ablations.',
                           'The earlier continuous Long scored 49.881534 with different initial calibration.',
                           'All scores use the same official local evaluator and largest-map selection.',
                           'No ground truth, CP timing, or evaluation alignment enters the estimator.']}
     (batch / 'comparison.json').write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
     by_key = {(row['sequence'], row['variant']): row for row in rows}
-    colors = ('0.55', '0.75', '#4772c4', '#21875e', '#b56f1c')
+    colors = ('#814998', '#323232', '#4772c4', '#21875e', '#b56f1c')
     fig, axes = plt.subplots(2, 2, figsize=(13, 8), constrained_layout=True)
     for col, sequence in enumerate(('medium', 'long')):
         for i, variant in enumerate(VARIANTS):
@@ -161,6 +161,7 @@ def main():
             axes[0, col].legend(fontsize=8, loc='upper left')
         for ax in axes[:, col]:
             ax.set_xticks(range(len(VARIANTS)), LABELS, rotation=15)
+            ax.set_xlim(-.6, len(VARIANTS) - .4)
             ax.grid(axis='y', alpha=.2)
     fig.suptitle('Continuity experiments — unchanged score rules; independent maps remain separate')
     fig.savefig(batch / 'comparison.png', dpi=160)
