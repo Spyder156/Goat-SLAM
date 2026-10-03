@@ -1,6 +1,6 @@
 # Goat-SLAM handoff
 
-Status: **2026-10-03**. Publication target: **Spyder156/Goat-SLAM**. The current task authorizes the initial public source upload; it does **not** authorize a new estimator variant or an unlimited series of runs. No new continuity, loop-closure, or motion-cue implementation has been validated since the results below.
+Status: **2026-10-03**. The frozen implementations are published at **Spyder156/Goat-SLAM**, with baseline tags and preservation checks. The user has now authorized a bounded implementation batch on full Medium and Long: direct recovery, accepted-landmark memory, and a fixed-intrinsic periodic-VI control. See `configs/orbslam3_lamaria/continuity_experiments_20261003/experiment.json` and `pipeline/run/continuity_experiment.py`. The six cases are being implemented/tested; the historical results below remain the reference until completed scores are recorded. Knot-based refinement remains deferred.
 
 ## Start here
 
