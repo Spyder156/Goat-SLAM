@@ -55,6 +55,17 @@
           "source_sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c"
         }
       }
+    },
+    "frozen_v2_repeat": {
+      "build": "orbslam3_lamaria_online_full_v2",
+      "hypothesis": "Unmodified frozen Medium repeat to assess asynchronous run variability after candidate regressions; not a new estimator.",
+      "configs": {
+        "medium": {
+          "path": "configs/orbslam3_lamaria/online_full_v2_transfer_20261003/medium.yaml",
+          "sha256": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931",
+          "source_sha256": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931"
+        }
+      }
     }
   },
   "reference_scores": {
@@ -63,5 +74,9 @@
   },
   "historical_long_different_calibration": 49.881533645273585,
   "evaluation": "Existing official scorer, largest map selected without GT, all native input coverage retained.",
-  "promotion_rule": "Report score, connected coverage, map count, CP recovery, scale, trajectory discontinuities and regression; no result inferred from map count alone."
+  "promotion_rule": "Report score, connected coverage, map count, CP recovery, scale, trajectory discontinuities and regression; no result inferred from map count alone.",
+  "additional_control": {
+    "case": "frozen_v2_repeat_medium",
+    "reason": "Added after all three Medium candidates regressed; first-failure timing and differing refinement schedules leave repeatability unresolved. One replay only, unchanged frozen source and inputs."
+  }
 }

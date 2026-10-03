@@ -248,10 +248,12 @@ def run_case(args, sequence):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--variant', choices=('recovery_direct', 'tracking_memory', 'periodic_vi'), required=True)
+    parser.add_argument('--variant', choices=('recovery_direct', 'tracking_memory', 'periodic_vi', 'frozen_v2_repeat'), required=True)
     parser.add_argument('--sequence', choices=('medium', 'long', 'both'), default='both')
     parser.add_argument('--batch', type=Path, default=DEFAULT_BATCH)
     args = parser.parse_args()
+    if args.variant == 'frozen_v2_repeat' and args.sequence != 'medium':
+        parser.error('The recorded frozen control is Medium only; use --sequence medium')
     for sequence in (('medium', 'long') if args.sequence == 'both' else (args.sequence,)):
         run_case(args, sequence)
 

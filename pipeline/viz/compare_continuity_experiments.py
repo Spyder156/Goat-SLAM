@@ -15,8 +15,8 @@ BASELINES = {
     'medium': ARTIFACTS / 'lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full',
     'long': ARTIFACTS / 'lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full',
 }
-VARIANTS = ('frozen_v2', 'recovery_direct', 'tracking_memory', 'periodic_vi')
-LABELS = ('Frozen v2', 'Direct recovery', 'Landmark memory', 'Fixed-camera VI')
+VARIANTS = ('frozen_v2', 'frozen_v2_repeat', 'recovery_direct', 'tracking_memory', 'periodic_vi')
+LABELS = ('Saved v2', 'Unchanged repeat', 'Direct recovery', 'Landmark memory', 'Fixed-camera VI')
 
 
 def read_score(run, sequence, variant):
@@ -76,6 +76,8 @@ def main():
     for sequence in ('medium', 'long'):
         rows.append(read_score(BASELINES[sequence], sequence, 'frozen_v2'))
         for variant in VARIANTS[1:]:
+            if sequence == 'long' and variant == 'frozen_v2_repeat':
+                continue
             case = batch / f'{variant}_{sequence}'
             state_path = case / 'status.json'
             state = json.loads(state_path.read_text()) if state_path.exists() else {'state': 'not started'}
@@ -131,14 +133,15 @@ def main():
                           'No ground truth, CP timing, or evaluation alignment enters the estimator.']}
     (batch / 'comparison.json').write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
     by_key = {(row['sequence'], row['variant']): row for row in rows}
-    colors = ('0.55', '#4772c4', '#21875e', '#b56f1c')
+    colors = ('0.55', '0.75', '#4772c4', '#21875e', '#b56f1c')
     fig, axes = plt.subplots(2, 2, figsize=(13, 8), constrained_layout=True)
     for col, sequence in enumerate(('medium', 'long')):
         for i, variant in enumerate(VARIANTS):
             row = by_key.get((sequence, variant))
             if row is None:
+                missing = 'Not scheduled' if sequence == 'long' and variant == 'frozen_v2_repeat' else 'Incomplete'
                 for ax in axes[:, col]:
-                    ax.text(i, 5, 'Incomplete', ha='center', fontsize=9, color='0.4', rotation=90)
+                    ax.text(i, 5, missing, ha='center', fontsize=9, color='0.4', rotation=90)
                 continue
             if row['Score2D'] is not None:
                 axes[0, col].bar(i, row['Score2D'], color=colors[i])
@@ -163,7 +166,7 @@ def main():
     fig.savefig(batch / 'comparison.png', dpi=160)
     plt.close(fig)
 
-    fig, axes = plt.subplots(2, 4, figsize=(18, 10), constrained_layout=True)
+    fig, axes = plt.subplots(2, len(VARIANTS), figsize=(22, 10), constrained_layout=True)
     for row_index, sequence in enumerate(('medium', 'long')):
         plan_paths = sorted(batch.glob(f'*_{sequence}/{sequence}_full/plan.json'))
         if not plan_paths:
@@ -192,7 +195,8 @@ def main():
             elif row is not None:
                 ax.set_title(f'{sequence.title()} / {LABELS[col]}\nNo CP alignment; {row["retained_maps"]} maps')
             else:
-                ax.set_title(f'{sequence.title()} / {LABELS[col]}\nIncomplete')
+                missing = 'Not scheduled' if sequence == 'long' and variant == 'frozen_v2_repeat' else 'Incomplete'
+                ax.set_title(f'{sequence.title()} / {LABELS[col]}\n{missing}')
             ax.set_aspect('equal', adjustable='datalim')
             ax.set(xlabel='East offset [m]', ylabel='North offset [m]')
             ax.grid(alpha=.2)
