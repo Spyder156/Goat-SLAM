@@ -1,0 +1,163 @@
+--- a/src/Tracking.cc
++++ b/src/Tracking.cc
+@@ -18,6 +18,7 @@
+ 
+ 
+ #include "Tracking.h"
++#include "LamariaTrackingMemory.h"
+ #include "MapLine.h"
+ #include "Rig.h"
+ 
+@@ -2990,6 +2991,9 @@
+ 
+ void Tracking::Track()
+ {
++    // Frame-local transaction: a recovered visual hypothesis remains tentative
++    // until the normal local-map optimizer confirms it.
++    std::unique_ptr<TrackingStateRollback> relatchPrediction;
+     if(mnMapDiagFrames > 0){
+         mnMapDiagFrames--;
+         std::cout << "[MAP-DIAG] frame " << mCurrentFrame.mnId
+@@ -3219,9 +3223,11 @@
+                                     if(mCurrentFrame.mvpMapPoints[i])
+                                         ++associationsBeforeRelatch[mCurrentFrame.Nleft!=-1 && i>=mCurrentFrame.Nleft ? 1 : 0];
+                             }
++                            relatchPrediction.reset(new TrackingStateRollback(mCurrentFrame));
+                             const bool relatchSucceeded=TryCoastRelatch();
+-                            if(relatchSucceeded)
+-                                mTimeStampLost = mCurrentFrame.mTimeStamp; // fresh grace
++                            if(!relatchSucceeded) relatchPrediction.reset();
++                            // Keep the original lost timestamp until local-map
++                            // confirmation. An unconfirmed pose cannot buy grace.
+                             if(diagnosticRelatch) {
+                                 const Sophus::SE3f poseAfterRelatch=mCurrentFrame.GetPose();
+                                 int associationsAfterRelatch[2]={0,0}, inliersAfterRelatch[2]={0,0};
+@@ -3248,7 +3254,7 @@
+                             }
+                         }
+ 
+-                        if (mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost)
++                        if (mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost && !relatchPrediction)
+                         {
+                             mState = LOST;
+                             Verbose::PrintMess("Track Lost...", Verbose::VERBOSITY_NORMAL);
+@@ -3395,6 +3401,19 @@
+             // the camera we will use the local map again.
+             if(bOK && !mbVO)
+                 bOK = TrackLocalMap();
++        }
++
++        if(relatchPrediction) {
++            // TrackLocalMap's own v2 snapshot is after visual relatching. This
++            // outer boundary restores the true IMU prediction on rejection.
++            relatchPrediction->finishRelatch(mCurrentFrame,bOK,mTimeStampLost);
++            if(!bOK && mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost)
++                mState=LOST;
++            if(LocalMatchDiagnosticsEnabled())
++                std::cout << "[RELATCH_TRANSACTION] t=" << std::setprecision(12)
++                          << mCurrentFrame.mTimeStamp << " committed=" << bOK
++                          << " lost_since=" << mTimeStampLost
++                          << " restored_prediction=" << !bOK << std::endl;
+         }
+ 
+         if(bOK)
+@@ -4443,6 +4462,10 @@
+ 
+ 
+ namespace {
++LamariaTrackingMemory& ShortTrackingMemory() {
++    static thread_local LamariaTrackingMemory memory;
++    return memory;
++}
+ struct TemporalAssociationResult {
+     int validPrevious[2]={0,0}, candidates[2]={0,0};
+     std::vector<int> seeded;
+@@ -4521,6 +4544,9 @@
+     // We have an estimation of the camera pose and some map points tracked in the frame.
+     // We retrieve the local map and try to find matches to points in the local map.
+     mTrackedFr++;
++    LamariaTrackingMemory& memory=ShortTrackingMemory();
++    if(LamariaTrackingMemory::Enabled())
++        memory.begin(this,mpAtlas->GetCurrentMap()->GetId(),mCurrentFrame.mTimeStamp,mpAtlas->GetCurrentMap()->GetInitKFid());
+     const TemporalAssociationResult temporal=SeedTemporalLandmarks(mLastFrame,mCurrentFrame,mpAtlas->GetCurrentMap());
+ 
+     UpdateLocalMap();
+@@ -4668,6 +4694,29 @@
+         }
+     }
+     auto diagnosticReturn = [&](bool success) {
++        if(LamariaTrackingMemory::Enabled()) {
++            int seeded[2]={0,0}, retained[2]={0,0};
++            for(int index:memory.result.seeded) {
++                const int camera=index>=mCurrentFrame.Nleft ? 1 : 0;
++                ++seeded[camera];
++                if(success && mCurrentFrame.mvpMapPoints[index] && !mCurrentFrame.mvbOutlier[index])
++                    ++retained[camera];
++            }
++            if(!memory.result.seeded.empty() ||
++               (LocalMatchDiagnosticsEnabled() && mCurrentFrame.mnId%20==0)) {
++                std::ostringstream report; report << std::setprecision(12)
++                    << "[TRACK_MEMORY_DIAG] {\"time\":" << mCurrentFrame.mTimeStamp
++                    << ",\"frame\":" << mCurrentFrame.mnId << ",\"map\":" << mpAtlas->GetCurrentMap()->GetId()
++                    << ",\"cache\":" << memory.size() << ",\"considered\":["
++                    << memory.result.considered[0] << ',' << memory.result.considered[1]
++                    << "],\"geometry_rejected\":[" << memory.result.geometryRejected[0] << ',' << memory.result.geometryRejected[1]
++                    << "],\"seeded\":[" << seeded[0] << ',' << seeded[1]
++                    << "],\"retained\":[" << retained[0] << ',' << retained[1]
++                    << "],\"success\":" << success << ",\"total_inliers\":" << mnMatchesInliers << '}';
++                std::cout << report.str() << std::endl;
++            }
++            if(success) memory.remember(mCurrentFrame,mpAtlas->GetCurrentMap());
++        }
+         // Reject the complete optimizer transaction, including its new prior,
+         // on EVERY inertial failure path (stereo included). The prior producer
+         // may already have consumed last-frame information; rebuilding from a
+@@ -5185,7 +5234,8 @@
+     }
+ 
+     if(diag) localTrackingCounters.to_match=nToMatch;
+-    if(nToMatch>0)
++    const bool useMemory=LamariaTrackingMemory::Enabled() && mState==OK;
++    if(nToMatch>0 || useMemory)
+     {
+         static const float localRatio=LocalMatchEnvironmentFloat("LAMARIA_LOCAL_NN_RATIO",0.8f,0.5f,0.99f);
+         static const float localRadius=LocalMatchEnvironmentFloat("LAMARIA_LOCAL_RADIUS_MULT",1.0f,0.5f,3.0f);
+@@ -5212,7 +5262,24 @@
+         if(mState==LOST || mState==RECENTLY_LOST) // Lost for less than 1 second
+             th=15; // 15
+ 
+-        int matches = matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th*localRadius, mpLocalMapper->mbFarPoints, mpLocalMapper->mThFarPoints);
++        if(nToMatch>0)
++            matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th*localRadius, mpLocalMapper->mbFarPoints, mpLocalMapper->mThFarPoints);
++        if(useMemory) {
++            ShortTrackingMemory().seed(mCurrentFrame,mpAtlas->GetCurrentMap(),th*localRadius,
++                                       mpLocalMapper->mbFarPoints,mpLocalMapper->mThFarPoints);
++            // A recent point can fall outside the current local-keyframe set.
++            // Charge it once, like an ordinary visible local point, before the
++            // optimizer updates found counts; the usual blind-frame refund
++            // also applies if this frame is rejected.
++            std::unordered_set<MapPoint*> charged(mvpChargedVisible.begin(),mvpChargedVisible.end());
++            for(int index:ShortTrackingMemory().result.seeded) {
++                MapPoint* point=mCurrentFrame.mvpMapPoints[index];
++                if(point && charged.insert(point).second) {
++                    point->IncreaseVisible();
++                    mvpChargedVisible.push_back(point);
++                }
++            }
++        }
+     }
+ }
+ 
+--- a/include/TrackingStateRollback.h
++++ b/include/TrackingStateRollback.h
+@@ -15,6 +15,10 @@
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  Sophus::SE3f pose;Eigen::Vector3f velocity;IMU::Bias bias;
+  explicit TrackingStateRollback(Frame& frame):pose(frame.GetPose()),velocity(frame.GetVelocity()),bias(frame.mImuBias){}
++ // A provisional relatch refreshes grace only after local-map acceptance.
++ void finishRelatch(Frame& frame,bool accepted,double& lostSince)const{
++  if(accepted)lostSince=frame.mTimeStamp;else restore(frame);
++ }
+  void restore(Frame& frame)const{
+   frame.SetPose(pose);frame.SetVelocity(velocity);frame.mImuBias=bias;
+   if(frame.mpcpi){delete frame.mpcpi;frame.mpcpi=nullptr;}
