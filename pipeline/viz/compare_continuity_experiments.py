@@ -7,6 +7,7 @@ selected map and evaluator's saved CP Sim3 are retained for every trajectory.
 import argparse
 import json
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = (ROOT / 'experiments').resolve()
@@ -28,7 +29,14 @@ def read_score(run, sequence, variant):
     adjacent = (dt >= .025) & (dt <= .1)
     speeds = distance[adjacent] / dt[adjacent]
     gaps = np.flatnonzero(dt > .5)
-    selection = score['trajectory_selection']
+    selection = score.get('trajectory_selection')
+    if selection is None:
+        # Older single-map score schema: independently check coverage before
+        # interpreting map_epochs, which is selected-map-only in newer files.
+        coverage = json.loads((run / 'coverage.json').read_text())
+        assert coverage['independent_segments_exported'] == score['map_epochs'] == 1
+        selection = {'atlas_map_epochs': 1, 'selected_pose_count': score['estimated_poses'],
+                     'atlas_pose_count': coverage['unique_input_frames_with_exported_pose']}
     return {
         'sequence': sequence, 'variant': variant, 'run': str(run),
         'score_path': str(path), 'Score2D': score['Score2D'],
@@ -92,7 +100,29 @@ def main():
     for sequence in ('medium', 'long'):
         available = [row for row in rows if row['sequence'] == sequence and row['Score2D'] is not None]
         winners[sequence] = max(available, key=lambda row: row['Score2D'])['variant']
+    historical_long = read_score(ARTIFACTS / 'lamaria_history_full_20261002', 'long', 'historical_continuity')
+    historical_long['comparison_note'] = 'Different earlier initial calibration; not a matched ablation.'
+    for row in rows + [historical_long]:
+        counts = {'full_calibration_trials': 0, 'full_calibration_accepted': 0,
+                  'fixed_vi_trials': 0, 'fixed_vi_accepted': 0}
+        with (Path(row['run']) / 'run.log').open(errors='replace') as handle:
+            for line in handle:
+                family = ('full_calibration' if '[CALIBRATION-TRIAL]' in line else
+                          'fixed_vi' if '[PERIODIC-VI-TRIAL]' in line else None)
+                if family:
+                    accepted = re.search(r'\baccepted=(\d+)', line)
+                    if accepted:
+                        counts[family + '_trials'] += 1
+                        counts[family + '_accepted'] += int(accepted.group(1))
+        row['periodic_refinement_counts'] = counts
+    strongest = {}
+    for sequence in ('medium', 'long'):
+        available = [row for row in rows if row['sequence'] == sequence and row['Score2D'] is not None]
+        if sequence == 'long':
+            available.append(historical_long)
+        strongest[sequence] = max(available, key=lambda row: row['Score2D'])['variant']
     result = {'results': rows, 'incomplete': pending, 'highest_observed_score_in_batch': winners,
+              'historical_long_reference': historical_long, 'strongest_recorded_including_history': strongest,
               'caveats': ['One replay per candidate; asynchronous mapping/BA can affect results.',
                           'Frozen v2 references are retained earlier runs, not same-session repeats.',
                           'A and B also share the transactional relatch repair; they are not single-line ablations.',
@@ -122,6 +152,10 @@ def main():
                              ha='center', fontsize=9)
         axes[0, col].set(title=sequence.title(), ylabel='Official local Score2D', ylim=(0, 105))
         axes[1, col].set(ylabel='Native poses in scored map [%]', ylim=(0, 116))
+        if sequence == 'long':
+            axes[0, col].axhline(historical_long['Score2D'], color='#814998', ls='--', lw=1,
+                                label='Earlier Long 49.88 (different calibration)')
+            axes[0, col].legend(fontsize=8, loc='upper left')
         for ax in axes[:, col]:
             ax.set_xticks(range(len(VARIANTS)), LABELS, rotation=15)
             ax.grid(axis='y', alpha=.2)
