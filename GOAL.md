@@ -1,6 +1,11 @@
 # Project goal: beat Meta's Aria SLAM on LaMAria
 
-Last reconciled: **2026-10-03**. Project: `/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3`.
+Last reconciled: **2026-10-04**. Project: `/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3`.
+
+Session paused by the user for their usage limit; all current jobs finished.
+Read `docs/RESUME_20261004.md` before doing more work. Latest visual questions are
+the confirmed missing 11.15 s startup trajectory, terminal drift, and apparent
+tilt. Their causes must not be conflated; no Baby-run gravity/tilt audit exists yet.
 
 ## Read this first if you have lost the thread
 
@@ -33,6 +38,14 @@ The earlier conversational shorthand “Meta has about 70” referred to the Lon
 Our eventual deliverable is a reproducible system and benchmark result, supported by saved raw estimates, calibration histories, configuration/build provenance, coverage accounting and inspectable visualizations. Keep the causal online SLAM result separate from any offline refinement result. Both are useful research directions, but they answer different questions and have different latency and compute costs.
 
 ## Where we started
+
+Latest accuracy experiment (E40/S25): final fixed-camera VI on the saved Baby Long
+native graph improved **43.729292→45.027586**, with identical one-map 99.38% coverage.
+All 27 CPs remain recovered, but metre-scale errors and a 1.62 m step remain.
+It does not replace historical Long 49.881534. Lower reprojection cost and a
+solver-reported convergence plateau produced a modest gain, not the target
+70–80. Full evidence and the completed four-panel Baby Rerun are in
+`docs/BABYFEATURES_NATIVE_VI_20261004.md`.
 
 The initial system was Raghav's ORB-SLAM3 fork running LaMAria through a new native **Fisheye624** model and a dual-camera rig. The user repeatedly observed a mismatch between apparently plausible image matches and poor 3D map/trajectory behavior. The central request was to inspect the estimator's geometry and associations end to end: quaternion layout, transform direction, camera/body/IMU axes, native image orientation, ray normalization, rig baseline, map units and projection consumers.
 

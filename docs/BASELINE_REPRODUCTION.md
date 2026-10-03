@@ -1,5 +1,10 @@
 # Reproducing the retained LaMAria baselines
 
+Current experimental branch handoff (2026-10-04): `docs/RESUME_20261004.md`.
+BabyFeatures Long43.73 and its offline native VI45.03 refinement are separate
+candidates; they do not supersede the preserved profiles documented here. The
+user stopped work for their usage limit; this document is not a replay request.
+
 This is the reproducibility record for the implementations retained for Goat-SLAM. It was checked against local build manifests, source overlays, saved run commands, configurations, and official local score artifacts on 2026-10-03. No estimator was rerun for this document.
 
 Read `GOAL.md`, `ROADMAP.md`, and `EXPERIMENTS.md` before changing an estimator. Preserve the successful implementations as separate profiles. The latest implementation is not the best on every sequence.

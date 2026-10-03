@@ -1,8 +1,27 @@
 # Roadmap: a reliable, accurate LaMAria visual-inertial SLAM system
 
-Updated: 2026-10-03. This is the research and implementation plan, not a claim that every proposed feature exists. Read `GOAL.md` first for the objective and `EXPERIMENTS.md` for the experiment ledger. Paths below are relative to `/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3` unless an absolute path is given.
+Updated: 2026-10-04. This is the research and implementation plan, not a claim that every proposed feature exists. Read `GOAL.md` first for the objective and `EXPERIMENTS.md` for the experiment ledger. Paths below are relative to `/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3` unless an absolute path is given.
 
 ## 1. Direction and the decisions the evidence now supports
+
+**Current stop and next discussion:** user is ending the session for their usage
+limit. No further run is pending or authorized by this document. They observe a
+missing beginning, end drift and slight apparent tilt in the Baby Rerun. The
+223-frame / 11.15 s startup pose gap is confirmed; the recording covers full input.
+The other causes are unverified. Proposed first step after discussion: inspect
+saved per-time errors and estimated gravity under the exact official CP alignment;
+separate camera view, rigid orientation, terminal drift and deformation. Additional
+alignments are diagnostic only. See `docs/RESUME_20261004.md` for full context and
+commands. Baby Medium remains untested; startup/SOS accuracy and Medium continuity
+are separate future experiments, not implied successes of the Long result.
+
+**2026-10-04 evidence update (E40):** one final fixed-camera global VI solve on the
+saved Baby Long native graph improved Score2D **43.73→45.03**, preserving the exact
+pose timestamps and one map. It reached a reported cost plateau; pixel RMS was
+0.803, but the 1.62 m history jump remains. More iterations of the same graph alone
+are not a demonstrated path to 70–80. Review the route/CP comparison before a new
+constraint, calibration or recovery-window experiment. See
+`docs/BABYFEATURES_NATIVE_VI_20261004.md`; the original Baby Rerun is complete.
 
 The goal is to outperform the Meta/Aria reference on comparable LaMAria evaluation, with a system that produces accurate, connected, metric trajectories and useful maps across short, medium, long, and difficult sequences. A visually good route, a lower reprojection cost, or one excellent sequence is not sufficient. We need coverage, repeatability, accurate geometry, and a verified score under the same protocol.
 

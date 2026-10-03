@@ -1,5 +1,11 @@
 # BabyFeatures SOS: Long experiment
 
+**Completed 2026-10-04:** Long43.729292, one map after startup, 99.38% native
+pose coverage. A separate saved-graph VI refinement scored45.027586. Neither
+replaces historical Long49.881534; Baby Medium/Short remain untested. The default
+output below already exists and must not be reused. Full resume instructions and
+the user's current documentation-only stop: `docs/RESUME_20261004.md`.
+
 `long_native.yaml` is byte-identical to frozen v2's
 `configs/orbslam3_lamaria/online_full_v2_transfer_20261003/long_native.yaml`
 (SHA256 `6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c`).

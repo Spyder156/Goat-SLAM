@@ -1,0 +1,18 @@
+Continue Goat-SLAM in /home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3 on branch experiments/BabyFeats. First read docs/RESUME_20261004.md and docs/HANDOFF.md, then GOAL.md, ROADMAP.md, EXPERIMENTS.md and IDEA_POOL.md. Read docs/BASELINE_REPRODUCTION.md before rebuilding. Do not touch the original INSV_STITCHING tree or frozen baselines.
+
+Goal: beat Meta/Aria on LaMAria with complete accurate native dual-fisheye visual-inertial SLAM. Short sequence_1_19 is good: frozen online full v2 scored 80.199161, one map. It uses ALIKED-derived features, Fisheye624, calibrated IMU and periodic bounded intrinsic calibration/VI-BA. Medium sequence_2_11 still fragments: 62.764799 with 3 maps, unchanged repeat 63.086620 with 4. Native v2 Long sequence_3_17 scored 34.458901 with 5 maps; historical Long 49.881534 is preserved and uses different starting calibration.
+
+Our latest BabyFeatures SOS experiment passively tracks short-lived features continuously, but uses their temporary visual/IMU factors only when normal tracking fails. On Long it kept one map after startup, returned from 15/15 SOS episodes, recovered 27/27 CPs, and scored 43.729292 with 35,619/35,842 native poses (99.38%). Baby has NOT been tested on Medium or Short. See docs/BABYFEATURES_LONG_20261003.md.
+
+One final offline fixed-camera VI solve on the same native graph improved 43.729292 to 45.027586 with identical coverage; no new SIFT or SLAM replay. The solver reached a cost plateau, pixel RMS 0.803, but metre-scale error and a 1.62 m jump remain. Historical Long 49.88 is still stronger. See docs/BABYFEATURES_NATIVE_VI_20261004.md and E40/S25. All jobs finished; nothing is awaiting monitoring.
+
+My latest visual observations: the route misses the beginning, drifts near the end, and looks slightly tilted. Missing start is confirmed: 223 frames/about 11.15 s absent after initialization/reset; video itself covers the full input. Whether the tilt is gravity, viewer angle, alignment compromise from end drift, or trajectory deformation is NOT established. First discuss and diagnose this from saved outputs, without automatically launching more runs. The Rerun uses the exact official CP-derived Sim3 for map and trajectory. Never feed GT into SLAM or rotate the display to hide errors.
+
+Full verified 43.73 Baby Rerun, four camera panels and SOS map colours:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/evaluation_baby_20261004/run.rrd
+Baby trails are reconstructed passive descriptor tracks, not logged per-point accepted solver IDs. Activation and aggregate counts are actual logs. This is NOT a 45.03 Rerun.
+
+43.73 versus 45.03 comparison:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_native_vi_20261004/comparison/comparison.png
+
+docs/RESUME_20261004.md contains exact build/runner/environment/provenance paths and the preserved Short 80 Rerun. Use it rather than guessing default profiles. Keep all baseline implementations safe. Give concise structured summaries and plain absolute visualization paths; pause to discuss major results. Do not start a broad sweep. Review the current evidence and propose the next focused step first.

@@ -1,7 +1,25 @@
 # Goat-SLAM handoff
 
-Status: **2026-10-04**. Current local branch: **`experiments/BabyFeats`**. The
-authorized BabyFeatures SOS implementation and one full Long replay are
+Status: **2026-10-04**. Current local branch: **`experiments/BabyFeats`**.
+**Session stopped at the user's usage limit.** Latest task is documentation and
+handoff only; no experiments or render jobs remain running. Start with
+`docs/RESUME_20261004.md` for exact commands, artifacts and the user's latest
+missing-start / terminal-drift / apparent-tilt observations. The startup gap is
+confirmed (223 frames, about 11.15 s); tilt and terminal-drift causes remain
+unverified. `docs/NEXT_AGENT_PROMPT.txt` is the copy-paste session prompt. Discuss
+the saved evidence before resuming implementation; do not automatically rerun.
+
+**Latest completed work:** the requested full Baby Long Rerun now exists and
+passed verification, including two additional reconstructed Baby-track panels
+and logged SOS map colours. One authorized offline fixed-camera native-graph
+global VI refinement scored **45.027586 versus 43.729292**, with identical one-map
+coverage (35,619/35,842) and 27/27 CPs. It reported a cost-plateau convergence;
+the 1.62 m jump remains. No new SLAM replay or calibration sweep was run. Read
+`docs/BABYFEATURES_NATIVE_VI_20261004.md` / E40 / S25 for commands, limitations
+and visual paths. No work is pending; pause for visual discussion before another
+implementation family. The 43.73 Rerun is not relabelled as the 45.03 candidate.
+
+The authorized BabyFeatures SOS implementation and one full Long replay are
 complete: **43.729292 Score2D, one retained map, 99.38% native pose coverage,
 15/15 SOS episodes returning to normal tracking**. One startup reset remains;
 the retained map never splits. All 27 CPs were recovered, but only four are
@@ -17,7 +35,7 @@ The earlier six-arm continuity batch and unchanged Medium control remain in
 
 Build reliable, complete, metrically accurate dual-fisheye visual-inertial SLAM that beats Meta/Aria under the actual LaMAria protocol. Preserve the strong retained geometry while fixing fragmented trajectories. A good-looking partial map is not success.
 
-**Latest authorization, 2026-10-03, completed 2026-10-04:** implement BabyFeatures
+**Implementation authorization, 2026-10-03, completed 2026-10-04:** implement BabyFeatures
 and run one full Long experiment on `experiments/BabyFeats`. Good short-lived
 correspondences are **tracked passively throughout**, but enter pose estimation
 **only after normal map tracking fails**. The implementation supports temporary
@@ -42,6 +60,11 @@ These are local official-function evaluations, not leaderboard submissions or ca
 | Long `sequence_3_17`, frozen v2/native input | **34.458901** | 15/27 | 3163/6118 | 5 | Negative transfer: fragmentation |
 | Long, earlier history/continuity baseline | **49.881534** | 27/27 | 6113/6118 | 1 | Preserve this full-route reference |
 | Medium, unchanged v2 repeat | **63.086620** | 13/18 | 2497/4083 | 4 | Same implementation; +0.322 is not an algorithmic gain |
+| Long, BabyFeatures SOS | **43.729292** | 27/27 | 6078/6118 | 1 | 99.38% native coverage; one startup reset, no later split |
+| Same Baby Long, offline fixed-camera native VI | **45.027586** | 27/27 | 6078/6118 | 1 | Identical timestamp coverage; modest improvement, jump remains |
+
+BabyFeatures has not been evaluated on Short or Medium. Its completed four-panel
+Rerun shows the original **43.73** result; no new **45.03** Rerun was generated.
 
 The best Short method is **online SLAM plus periodic causal VI-BA and bounded intrinsic calibration**, using native Fisheye624, both cameras, calibrated IMU, and cached ALIKED-derived features. All 15 independent native intrinsic variables per camera, including focal length, can move with factory priors, step bounds and held-out checks. Physical rig and camera/IMU extrinsics remain fixed. Eligible full-calibration trials run every 60 native seconds; Short accepted 2/15 trials. This is not online calibration of extrinsics or time offsets.
 
@@ -115,6 +138,7 @@ Complete evaluated Reruns:
 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/online_full_evaluation.rrd
 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/online_full_evaluation.rrd
 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/online_full_evaluation.rrd
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/evaluation_baby_20261004/run.rrd
 ```
 
 Latest read-only diagnostics:

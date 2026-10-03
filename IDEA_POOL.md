@@ -3,11 +3,18 @@
 Updated: **2026-10-04**.
 
 This is a living collection of hypotheses and design discussions, not a list of
-proven capabilities. The latest request authorizes **one BabyFeatures SOS
-implementation and a full Long experiment on `experiments/BabyFeats`**. That
-experiment is now complete: improved map survival, with accuracy still limited.
-The frozen v2 implementation is preserved. Exact results are E39 in
-`EXPERIMENTS.md` and `docs/BABYFEATURES_LONG_20261003.md`.
+proven capabilities. **Work is stopped at the user's usage-limit request.** This
+update records completed work and next questions; it authorizes no new run.
+Read `docs/HANDOFF.md` and `docs/RESUME_20261004.md` before resuming.
+
+One BabyFeatures SOS implementation and one full Long replay are complete on
+`experiments/BabyFeats`: **43.729292, one retained map, 99.38% pose coverage**.
+One subsequent offline fixed-camera native-graph VI refinement scored
+**45.027586 with the identical 35,619 / 35,842 timestamps and 27 / 27 CPs**.
+The frozen Short v2 **80.199161** and historical Long **49.881534** remain
+preserved. BabyFeatures Medium and Short are **untested**. Exact evidence is in
+`EXPERIMENTS.md`, `docs/BABYFEATURES_LONG_20261003.md`, and
+`docs/BABYFEATURES_NATIVE_VI_20261004.md`.
 
 ## Direction and relationship to the other documents
 
@@ -22,6 +29,8 @@ accurate, observation-supported motion; disabling resets is not proof of success
 - `GOAL.md`: the project objective and evaluation principles.
 - `ROADMAP.md`: the broader research and implementation areas.
 - `EXPERIMENTS.md`: measured outcomes, including negative results.
+- `docs/RESUME_20261004.md`: the current stopping point, artifact identities and
+  next-agent handoff; proposals below are not a queue to execute automatically.
 - This file: proposed ideas, their reasoning, risks, and possible future tests.
 
 The latest prevention-first discussion here supersedes older immediate-priority
@@ -37,7 +46,10 @@ Long 49.881534 remains higher. All 27 CPs recovered, only four within 1 m.
 One 1.619 m final pose jump remains. This is a positive continuity result,
 not a claim that accuracy or repeatability is solved. The implementation uses
 at most eight frames, so the full-interval smoothing below remains an aspiration
-for longer gaps. Review diagnostics before choosing the next experiment.
+for longer gaps. A separate final fixed-camera VI solve improved this same
+trajectory to **45.027586**, without changing coverage; the largest jump became
+**1.622 m**, so it did not repair the SOS discontinuity. See I11 below. Review
+diagnostics before choosing the next experiment; Medium transfer is still untested.
 
 ### The idea
 
@@ -219,7 +231,11 @@ automatically repair the unrecorded motion. No Atlas adapter has been built.
   fully occluded views supply no usable visual tracks. Report growing
   uncertainty instead of promising unbounded accurate tracking.
 
-### Future validation and visual diagnostics — not run yet
+### Further validation and visual diagnostics
+
+The initial implementation passed 14 native numerical checks and one full Long
+replay. The broader proposed cases below are not all covered by that evidence;
+they are future extensions, not additional completed runs or present authorization.
 
 First isolate the new information source: keep the extraction pool, native
 geometry, and baseline matching/acceptance policies unchanged where applicable.
@@ -284,6 +300,89 @@ describes an earlier experiment. They are not additional tests authorized now.
 | I09 | Native floating-point ALIKED descriptors | Avoid possible losses from the current binary256 representation | Plausible frontend experiment, not a proven cause. Match compute and keep this separate from the initial BabyFeature design |
 | I10 | Diagnose systematic periphery/calibration errors alongside occlusion | Separate geometry bias from missing static image information | Stratify held-out residuals by camera/ray angle and image condition. The good v2 score does not establish that all lens error is solved |
 
+## I11. Separate final fixed-camera VI refinement of the connected native graph
+
+**Origin:** follow-up discussion of the attractive but 43.73-scoring connected
+Long route. **Status:** one completed offline experiment; modest positive result.
+
+The periodic calibration path constructs a fixed-camera VI reference and a
+free-intrinsics candidate, but commits only a successfully validated calibration
+candidate. When calibration is rejected, its fixed-camera VI reference is also
+discarded. This motivated testing a separate final geometry/state refinement.
+
+The completed experiment reused 2,401 native keyframes, 156,557 landmarks and
+1,119,060 observations from the exact BabyFeatures run. It fixed the last accepted
+Fisheye624 intrinsics and the physical rig/IMU extrinsics, optimized visual and
+inertial states, and transported every existing non-keyframe pose through its
+original surviving reference keyframe. No new SIFT graph, GT factors, missing-pose
+interpolation or SLAM replay was used. Serialized online velocities/biases were
+unavailable and had to be initialized again; non-keyframe relative states were
+preserved rather than individually optimized.
+
+**Measured response:** Score2D **43.729292 → 45.027586**; CP within 1 m **4 → 5**;
+horizontal RMSE **2.933179 → 2.754464 m**. Sixteen CP errors decreased and eleven
+increased. All 27 CPs and exactly 35,619 exported timestamps remain. The solver
+reported convergence at a cost plateau after 39 outer iterations / 15 accepted
+updates; final native reprojection RMS was **0.803250 px**. The **1.622 m** pose
+jump survived. These results support an offline accuracy improvement on this
+run, not a claim that online tracking improved or that low pixel error guarantees
+70–80 points. The older Short 67 visual/fixed-VI/calibrated-VI trials remain
+negative or effectively neutral evidence in `EXPERIMENTS.md` E28–E31.
+
+**Next ideas, not executed:** improve verified longer-range static constraints,
+retain/refine a coherent SOS interval, or test a specifically identified sensor
+model discrepancy. Repeating an unchanged solve is not supported as the next
+high-value step. A calibration change needs independent geometric evidence and
+held-out checks. Preserve this 45.03 refinement and the stronger historical Long
+reference separately.
+
+Exact report: `docs/BABYFEATURES_NATIVE_VI_20261004.md`.
+Comparison visualization:
+
+```text
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_native_vi_20261004/comparison/comparison.png
+```
+
+## I12. Diagnose the missing beginning, end drift and apparent tilt
+
+**Origin:** the user's latest visual observations. **Status:** unresolved
+interpretation; no new experiment or corrective transform has been applied.
+
+Separate what the export proves from what the Rerun suggests:
+
+- The Baby Long source and 45.03 refinement both omit **223 startup frames**.
+  Their 40 unmatched dense-GT timestamps are all before the first estimate.
+  The source input spans native 152.349–1944.399 s; exported history starts at
+  163.499 s and reaches the final input. Thus missing startup is measured;
+  missing exported end coverage is not the explanation for the observed end drift.
+- Whole-route accuracy is still imperfect after one official CP Sim3. Source
+  horizontal error reaches 10.843 m; the refined output reaches 8.590 m.
+  Those global maxima do not by themselves locate or identify the drift source.
+- Apparent tilt is an observation, not yet evidence of a wrong gravity vector,
+  quaternion convention, camera calibration, or initialization. The raw map,
+  saved evaluation rotation, viewer up-axis and actual route elevation are
+  distinct things to inspect. Do not rotate the trajectory or cloud by eye and
+  present the change as an estimator correction.
+
+**Next diagnostic when work resumes:** identify the exact source/candidate
+artifact being viewed; inspect export coverage, raw poses, saved official Sim3,
+gravity/frame conventions and camera/rig transforms together. Plot existing
+position/orientation residuals over time, with SOS and backend-update boundaries,
+to distinguish a global visual tilt from changing local error and state-history
+discontinuities. Keep the existing full denominators. GT is diagnostic and
+evaluation evidence only, never an initialization, calibration, smoothing or
+trajectory-joining input to the estimator.
+
+The available full Rerun is the **43.729292 source**, not the later 45.027586
+refinement. Its Baby panels reconstruct passive descriptor tracks; individual
+solver inlier identities were not logged. Aggregate SOS counts and activation
+come from actual logs. This distinction matters when interpreting apparent
+support or geometry at the late failure.
+
+```text
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/evaluation_baby_20261004/run.rrd
+```
+
 ## Wider idea inventory — retained, not the current discussion scope
 
 The detailed hypotheses, attempted work, and scores remain in `ROADMAP.md` and
@@ -294,7 +393,7 @@ reclassifying historical experiments as new proposals.
 |---|---|---|
 | Initialization and metric scale | Observable multi-frame stereo-inertial startup; confidence-weighted learned depth such as DA3, metrically checked against actual sensor constraints | ROADMAP sections 3–4 |
 | Medium-range/local accuracy | Informative local VI windows, persistent tracks, robust uncertainty models, lines/planes where supported | ROADMAP sections 5–6 |
-| Global refinement | Optical versus VI batch refinement, convergence/weighting improvements, coherent priors and metric rig constraints | ROADMAP section 7; EXPERIMENTS E28–E31 include negative/neutral measured refinements |
+| Global refinement | Optical versus VI batch refinement, convergence/weighting improvements, coherent priors and metric rig constraints | ROADMAP section 7; EXPERIMENTS E28–E31 include negative/neutral measured refinements; I11 and docs/BABYFEATURES_NATIVE_VI_20261004.md record the modest 43.73→45.03 native-graph result |
 | Loop closure | MegaLoc retrieval, native-rig verification, CLoSeR-inspired streaming reconstruction/closure investigation, metric graph correction with VI refinement | ROADMAP section 8; discussion proposals, not completed integrations |
 | Online calibration | Bounded observable intrinsics; later staged rig/IMU extrinsics and time-offset refinement | ROADMAP sections 9–10; v2 already adjusts native intrinsics, not those extrinsics |
 | Short accuracy and motion knots | Investigate motion-derived slow/dwelling segments for extra refinement without surveyed control-point inputs or assumed zero velocity | ROADMAP section 12; deferred until continuity is reliable |
@@ -308,8 +407,11 @@ already available, likely failure modes, and the smallest decisive future
 comparison. Link measured results into `EXPERIMENTS.md` when work is actually
 performed. Never turn a proposal into an implementation claim or score promise.
 
-Latest completed action: **I01 implemented and tested once on full Long in
-`experiments/BabyFeats`**. Passive tracks, SOS-only constraints, and guarded
-same-map promotion kept the retained map connected. Review E39 and its
-diagnostics before choosing another experiment. No poses or inter-map
-registrations were invented; frozen v2 estimation remains preserved separately.
+Latest completed estimator work: **I01's one full Long replay and I11's one
+offline fixed-camera native VI refinement**. The source Rerun is complete and
+verified; the refinement has scored outputs and comparison diagnostics, without
+a claimed candidate Rerun. No missing poses or inter-map registrations were
+invented. Frozen Short 80.20 and historical Long 49.88 remain preserved. The
+current action is documentation and handoff only; use `docs/RESUME_20261004.md`
+and `docs/HANDOFF.md` to restart from the actual evidence and the user's latest
+questions rather than automatically rerunning old experiments.
