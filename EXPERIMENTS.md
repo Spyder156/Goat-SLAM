@@ -50,12 +50,21 @@ Scores were checked against saved `lamaria_score/scores.json` artifacts when thi
 | S14 | Short S07 + offline SIFT full VI-BA, all intrinsics | 67.183330 | 14/14 | 10/14 | 2999/2999 | 1 | Essentially unchanged: -0.005050 |
 | S15 | Medium, unchanged online VI/calibration v2 method | 62.764799 | 13/18 | 13/18 | 2499/4083 | 3 | Accurate selected segment; fragmentation still removes much of the route |
 | S16 | Long, online VI/calibration v2 with verified native input | 34.458901 | 15/27 | 9/27 | 3163/6118 | 5 | Completed replay, negative continuity result; only 47.88% in the scored map |
+| S17 | Medium, direct recovery | Unscorable | — | — | — | 7 | No official CP alignment |
+| S18 | Long, direct recovery | 38.941196 | 18/27 | 6/27 | 3857/6118 | 8 | Above native v2; below historical Long; still fragmented |
+| S19 | Medium, landmark memory | 45.874750 | 12/18 | 10/18 | 2115/4083 | 4 | Below unchanged Medium |
+| S20 | Long, landmark memory | 42.904563 | 19/27 | 8/27 | 4163/6118 | 6 | Above native v2; below historical Long; still fragmented |
+| S21 | Medium, periodic fixed VI | Unscorable | — | — | — | 6 | No official CP alignment |
+| S22 | Long, periodic fixed VI | 37.630917 | 16/27 | 11/27 | 3545/6118 | 13 | Above native v2; below historical Long; still fragmented |
+| S23 | Medium, unchanged v2 repeat | 63.086620 | 13/18 | 12/18 | 2497/4083 | 4 | Reproduces saved v2 score; no estimator change |
 
 The chronological history is not a monotonic leaderboard ladder. Different sequences, coverage, feature graphs, and optimizer budgets matter. Do not compare Long 49.88 with Short 80.20 as the effect of one change.
 
 ### Exact run paths for the score register
 
-Each directory below contains `lamaria_score/scores.json`.
+Each scored directory below contains `lamaria_score/scores.json`. Unscorable
+S17/S21 retain evaluation provenance and the failed official alignment logs;
+they have no fabricated score file.
 
 ```text
 S01 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002
@@ -74,6 +83,13 @@ S13 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_globa
 S14 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_global_refinement_20261003/runs/vi_calib
 S15 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full
 S16 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full
+S17 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/recovery_direct_medium/runs/recovery_direct_medium_medium_full
+S18 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/recovery_direct_long/runs/recovery_direct_long_long_full
+S19 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_medium/runs/tracking_memory_medium_medium_full
+S20 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_long/runs/tracking_memory_long_long_full
+S21 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/periodic_vi_medium/runs/periodic_vi_medium_medium_full
+S22 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/periodic_vi_long/runs/periodic_vi_long_long_full
+S23 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/frozen_v2_repeat_medium/runs/frozen_v2_repeat_medium_medium_full
 ```
 
 ## 3. The experiments, one by one
@@ -615,6 +631,50 @@ The selected map covers **47.88% of native inputs**; 16,146 poses from the other
 /home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/online_full_v2_transfer_20261003/long_native.audit.json
 /media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/calib_refine/native_sequence_3_17/refined_native.json
 ```
+
+### E37. Three full Medium/Long continuity candidates
+
+Implemented separate frozen-v2-derived patches: **A**, direct binary-descriptor
+recovery without ORB vocabulary partitions; **B**, 0.5-second accepted-landmark
+appearance memory under native projection gates; **C**, fixed-intrinsic periodic
+VI with map-local scheduling after fragmentation. A/B share provisional-relatch
+rollback and grace handling. No geometric gates were loosened; GT was evaluation
+only. All six full replays exited normally; native production contracts passed.
+
+Results S17–S22 above are **not promotion results**. B's Long 42.904563 beats the
+native-v2 transfer by 8.445662, with 68.36% selected native coverage, but still
+has six maps and falls below the older 49.881534 continuous Long. B regressed
+Medium to 45.874750. A/C Medium lacked the height-supported CPs required for the
+official alignment and are unscorable, not assigned fabricated zeros. C accepted
+zero of 18/25 periodic proposals, so no periodic correction reached live state.
+
+A exposed a recovery acceptance gap: >=50-inlier visual recovery is followed by
+local VI that can discard support and commit through the >10 RECENTLY_LOST
+branch. Medium committed 16/20/21-inlier solutions displaced 5.49–8.52 m from
+visual hypotheses; Long committed an 11-inlier solution after 84 visual inliers.
+This shows a support/acceptance mismatch, not which pose is GT-correct or that
+all breaks share this cause. Existing VI already optimizes pose/velocity/bias;
+valid temporal anchors are not intrinsically wrong. A dedicated recovery
+confirmation/state transition remains the next implementation decision.
+
+Full technical report: `docs/CONTINUITY_EXPERIMENTS_20261003.md`.
+Exact source/log trace: `docs/RECOVERY_HANDOFF_20261003.md`.
+Seven-case hashes/results: `docs/CONTINUITY_RESULTS_20261003.json`.
+Diagnostics are under the project artifact batch `lamaria_continuity_batch_20261003`.
+No new Rerun recording was rendered; prior evaluated recordings are preserved.
+
+### E38. One unchanged Medium repeatability control
+
+S23 used byte-identical frozen-v2 library, runner, settings and timestamps. It
+scored **63.086620**, versus the saved 62.764799, with nearly identical selected
+native coverage (59.4787% versus 59.5040%). The first split repeats at 777.387 s
+versus 777.687 s. Four maps survive versus three; internal calibration and
+recovery outcomes also vary (5 versus 4 calibration commits; 16 versus zero
+visual recovery hypotheses accepted). This is not an algorithmic score gain,
+and one repeat does not establish variance. It does confirm the broad Medium
+failure location and does not explain away B's 45.87 regression. No candidate
+was retried or selected for a favorable run. Stop for discussion before another
+implementation family; knot-based refinement remains deferred.
 
 ## 4. What these results establish and what they do not
 

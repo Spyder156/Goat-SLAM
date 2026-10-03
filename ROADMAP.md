@@ -14,6 +14,30 @@ Short's remaining 19.80 points have a different explanation: all 14 CPs are reco
 
 The official reproduced Aria SLAM category scores on the leaderboard checked on 2026-10-03 are Short 90.7, Medium 78.5, Long 70.9, Lowlight 84.2, and Moving 55.0. These are category results, whereas our 80.20 is a local result on one Additional Set sequence. We must not subtract them and announce a leaderboard gap or a win. A like-for-like suite comes later. [Official LaMAria leaderboard](https://lamaria.ethz.ch/leaderboard).
 
+### Continuity batch update and next decision
+
+E37–E38 are now complete: six full candidate replays and one unchanged Medium
+control. Direct recovery, landmark memory and map-local fixed-intrinsic VI are
+implemented as separate experimental packages. **Promote none.** Memory scored
+45.87 Medium / 42.90 Long; direct recovery was unscorable Medium / 38.94 Long;
+fixed VI was unscorable Medium / 37.63 Long and accepted no periodic correction.
+The unchanged Medium repeat scored 63.09 and reproduced the first dropout
+location. The retained Long 49.88 remains stronger than all new Long arms.
+
+Next priority is an explicit recovery confirmation and VI handoff policy. The
+current coast path can go from >=50 visual inliers to 11–21 after local VI and
+still accept. Verify recovered support and state consistency over a recovery
+window; do not merely change >10 to >=15, blindly trust visual poses, replace a
+temporal IMU anchor with a retrieved keyframe, or join independent maps without
+estimated constraints. Existing VI already optimizes pose, velocity and bias.
+Keep high-quality temporal/appearance matching as a separate improvement, and
+retain repeatability controls before claiming score gains. Knot refinement
+remains deferred. The user requested discussion at this major crossroads.
+
+Evidence and visual expectations: `docs/CONTINUITY_EXPERIMENTS_20261003.md`.
+This update supersedes earlier wording below that calls these three candidates
+unimplemented; research directions without recorded results remain proposals.
+
 ### What the latest experiments actually established
 
 | Change / experiment | Local Short Score2D | What it supports | What it does not establish |

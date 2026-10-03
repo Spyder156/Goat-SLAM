@@ -63,6 +63,25 @@ All values below are **local evaluations**, not public leaderboard submissions. 
 
 The three offline arms used one common graph with **1,715,595 initial landmarks and 26,564,121 observations**, re-extracted and matched using SIFT. They started independently from the same source trajectory. Each completed its 30-attempt budget without declaring formal convergence. Those results say that **these tested refinements did not improve the score**; they do not prove global BA can never help. The offline and online experiments differ in their visual graph, execution history and optimization schedule, so their comparison does not isolate a single causal variable.
 
+### Latest continuity batch: no new candidate promoted
+
+Three separate candidates were implemented and run fully on Medium/Long:
+direct recovery, accepted-landmark memory, and fixed-intrinsic periodic VI.
+None surpassed the strongest retained implementation on its sequence. The
+best new Long score was memory's **42.904563**, above native-v2 34.458901 but
+below historical Long **49.881534**; memory regressed Medium to **45.874750**.
+Direct-recovery and fixed-VI Medium outputs were unscorable after fragmentation.
+An unchanged Medium control scored **63.086620**, versus saved 62.764799, and
+repeated the first map break within 0.3 s. That small gain is run variation,
+not an algorithmic improvement. Frozen Short **80.199161** is unchanged.
+
+The concrete new finding is a recovery acceptance gap: a >=50-inlier visual
+recovery can lose most support during local VI and still commit through the
+>10-inlier recent-loss path. Fix the explicit recovery confirmation/inertial
+handoff without assuming which pose is correct or discarding valid IMU history.
+Do not promote extra matches or lower optimizer cost as evidence of reliable
+SLAM. Read E37–E38 in `EXPERIMENTS.md` and `docs/RECOVERY_HANDOFF_20261003.md`.
+
 ### What is real about the 80.20 result
 
 - Full Short recording, approximately **917.5 seconds**; not a favorable time crop.
@@ -78,7 +97,7 @@ The three offline arms used one common graph with **1,715,595 initial landmarks 
 ### What is still unresolved
 
 - v2 contains brief pose jumps around native timestamp 550 s. Preserve this limitation alongside the good score.
-- The gain is **not yet attributable exclusively to camera calibration**. Periodic VI optimization, calibration and associated state handling changed together. The matched recurring-VI/frozen-intrinsics control is still needed.
+- The gain is **not yet attributable exclusively to camera calibration**. Periodic VI optimization, calibration and associated state handling changed together. The fixed-intrinsic C control has now run, but accepted no periodic update and uses a different proposal comparator; a matched accepted-update comparison is still needed.
 - v3's corrected rollback contract passed its checks, but the full run fragmented and scored 42.59. Its calibration/keyframe schedule differed before the first failure, so it is not a perfectly deterministic one-variable ablation.
 - The first full Medium/Long transfers have now completed and **failed to preserve continuity**: scores 62.76/34.46 with three/five independent maps. Medium loses 27.78 points to missing CPs; Long loses 44.44. In v2, periodic full calibration only runs while one populated map exists, so splitting also prevents further calibration trials. Stabilize this behavior before promoting the candidate across the suite; repeatability and wider benchmark generalization remain unproved.
 - Long's inherited lens input was a prior COLMAP fit with separate focal lengths, not factory-native calibration. That attempt failed the single-focal constructor contract. The completed transfer restored the sequence's native VRS lens parameters and retained its rig/IMU transforms; comparison against the old Long baseline therefore changes both method and starting lens calibration. See E36 and the input audit in `EXPERIMENTS.md`.
