@@ -1,0 +1,549 @@
+{
+  "schema_version": 1,
+  "experiment": "BabyFeatures SOS / full Long",
+  "experiment_id": "lamaria_babyfeats_long_20261003",
+  "completed_local_date": "2026-10-04",
+  "branch": "experiments/BabyFeats",
+  "source_commit_at_launch": "2e989b48fabeafa6962ea3bfb4117935e26e8af2",
+  "status": "complete",
+  "assessment": {
+    "continuity": "Positive in one full replay: one retained map after startup, all 15 SOS episodes returned to ordinary map tracking.",
+    "accuracy": "43.729292 exceeds frozen native v2 34.458901 but remains below historical Long 49.881534; 1.619 m adjacent pose jump survives.",
+    "promoted_as_best_baseline": false
+  },
+  "run_directory": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/runs/lamaria_babyfeats_long_20261003_long_full",
+  "artifact_directory": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003",
+  "implementation": {
+    "parent_profile": "orbslam3_lamaria_online_full_v2",
+    "passive_tracking_in_normal_mode": true,
+    "baby_factors_in_normal_mode": false,
+    "runtime_enable": "LAMARIA_BABY_FEATURES=1",
+    "source_config_equal_to_frozen_native_v2": true,
+    "window_states_max": 8,
+    "temporary_XYZ_min_parallax_degrees": 0.25,
+    "minimum_verified_current_tracks": 15,
+    "visual_chi2_gate": 5.991,
+    "maximum_active_inertial_chi2": 100.0,
+    "episode_limit_seconds": 10.0,
+    "grace_seconds": 5.0,
+    "promotion_minimum_points": 50,
+    "promotion_minimum_verified_views": 3,
+    "promotion_minimum_parallax_degrees": 1.0,
+    "promotion_minimum_consecutive_accepted_updates": 3,
+    "promotion_minimum_episode_seconds": 0.15,
+    "promotion_minimum_spacing_seconds": 0.5,
+    "complete_marginalization_prior": false
+  },
+  "execution": {
+    "full_replays": 1,
+    "returncode": 0,
+    "launcher_elapsed_seconds": 2339.719868062006,
+    "scorer_elapsed_seconds": 1.7043267390108667,
+    "cpus": 4,
+    "ground_truth_used_by_estimator": false,
+    "calibration_trials": 29,
+    "calibration_accepted": 4,
+    "loop_detections": 0,
+    "merge_detections": 0
+  },
+  "score": {
+    "sequence": "sequence_3_17",
+    "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/runs/lamaria_babyfeats_long_20261003_long_full",
+    "evaluation": "LaMAria official functions, local evaluation only",
+    "Score2D": 43.72929195971007,
+    "CPRecall@1m_percent": 14.814814814814813,
+    "PoseRecall@5m_percent": 89.84962406015038,
+    "PoseRecall@1m_percent": 18.224910101340306,
+    "CP_total": 27,
+    "CP_triangulated": 27,
+    "CP_within_1m": 4,
+    "GT_total_denominator": 6118,
+    "GT_associated": 6078,
+    "GT_unmatched_count": 40,
+    "GT_unmatched_before_first_estimate": 40,
+    "GT_unmatched_after_last_estimate": 0,
+    "pose_count_within_5m": 5497,
+    "pose_count_within_1m": 1115,
+    "estimated_poses": 35619,
+    "native_input_frames": 35842,
+    "processed_input_frames": 35842,
+    "unsupported_boundary_frames": 0,
+    "unsupported_boundary_prefix_frames": 0,
+    "unsupported_boundary_suffix_frames": 0,
+    "missing_native_input_poses": 223,
+    "missing_processed_input_poses": 223,
+    "pose_coverage_fraction": 0.9937782489816417,
+    "processed_pose_coverage_fraction": 0.9937782489816417,
+    "pose_to_input_max_difference_ns": 0,
+    "map_epochs": 1,
+    "source_timestamp_scope": "full source recording supplied",
+    "trajectory_selection": {
+      "policy": "largest",
+      "selected_coordinate_frame": "map_0_init_29_body0",
+      "selected_map_id": "0",
+      "selected_map_init_kf_id": "29",
+      "selected_pose_count": 35619,
+      "atlas_pose_count": 35619,
+      "atlas_map_epochs": 1,
+      "omitted_other_map_poses": 0,
+      "available_maps": [
+        {
+          "coordinate_frame": "map_0_init_29_body0",
+          "poses": 35619
+        }
+      ],
+      "uses_ground_truth_for_selection": false
+    },
+    "pGT_association_max_difference_ns": 1,
+    "associated_horizontal_error_m": {
+      "median": 1.895925302379131,
+      "rmse": 2.933178882126839,
+      "p90": 4.708986733352339,
+      "maximum": 10.84322944000087
+    },
+    "CP_sim3": {
+      "scale": 1.0081740366898517,
+      "rotation_xyzw": [
+        -0.09421931567538222,
+        0.06502376218045659,
+        0.7893397379851887,
+        0.6031893640831505
+      ],
+      "translation": [
+        -270.35502900374735,
+        -366.18944328608694,
+        -29.25966849790045
+      ]
+    },
+    "protocol_notes": [
+      "Horizontal XY errors, not 3D ATE.",
+      "One CP-derived Sim3; no separate dense-GT fit.",
+      "Missing GT timestamps count as failures in the full PoseRecall denominator; they do not directly change Score2D.",
+      "Score2D averages the official piecewise control-point error score; missing control points contribute zero.",
+      "Missing input poses remain absent; no gap filling or independent-map stitching.",
+      "Local per-sequence score, not a leaderboard submission."
+    ]
+  },
+  "references": {
+    "frozen_v2_native_long": {
+      "score_path": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/lamaria_score/scores.json",
+      "score_sha256": "bb30eb206f342fcddc78e367410f9d8ad95b4df74797fe97127dea34bc220467",
+      "Score2D": 34.458900755473394,
+      "native_pose_coverage_fraction": 0.47876792589699235,
+      "retained_maps": 5,
+      "CP_triangulated": 15,
+      "CP_total": 27,
+      "GT_associated": 3163,
+      "GT_total": 6118
+    },
+    "historical_long_different_calibration": {
+      "score_path": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002/lamaria_score/scores.json",
+      "score_sha256": "82dc109d65316a3fa247c8a6081c4900024b959eb8456798354d9b459d510b5f",
+      "Score2D": 49.881533645273585,
+      "native_pose_coverage_fraction": 0.9980469839852687,
+      "retained_maps": 1,
+      "CP_triangulated": 27,
+      "CP_total": 27,
+      "GT_associated": 6113,
+      "GT_total": 6118
+    }
+  },
+  "coverage": {
+    "input_frames": 35842,
+    "input_start_s": 152.349294899,
+    "input_end_s": 1944.3992949110002,
+    "input_span_s": 1792.0500000120003,
+    "independent_segments_exported": 1,
+    "completed_active_map_resets": 1,
+    "new_map_events": 1,
+    "unique_input_frames_with_exported_pose": 35619,
+    "exported_pose_fraction": 0.9937782489816417,
+    "logged_visual_ok_frames": 35684,
+    "logged_visual_ok_fraction": 0.9955917638524636,
+    "logged_coasted_frames": 83,
+    "exported_pose_with_logged_visual_ok": 35537,
+    "exported_pose_with_logged_coasting": 82,
+    "longest_independently_framed_contiguous_segment": {
+      "frames": 35619,
+      "start_s": 163.499313924,
+      "end_s": 1944.3992949110002,
+      "duration_s": 1780.8999809870002
+    },
+    "final_history_status_counts": {
+      "marked_lost": 148,
+      "exported": 35619
+    }
+  },
+  "sos": {
+    "event_counts": {
+      "reset": 4628,
+      "warm": 356,
+      "enter": 15,
+      "rejected": 10,
+      "accepted": 72,
+      "promotion_pending": 13,
+      "promoted": 13,
+      "recovered": 15
+    },
+    "episodes": [
+      {
+        "start_native_s": 408.099313924,
+        "start_map": 0,
+        "accepted_updates": 4,
+        "rejected_updates": 1,
+        "end_native_s": 408.349313912,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.24999998800001322
+      },
+      {
+        "start_native_s": 1529.049313924,
+        "start_map": 0,
+        "accepted_updates": 4,
+        "rejected_updates": 1,
+        "end_native_s": 1529.299294924,
+        "window_resets": [
+          {
+            "native_s": 1529.099294925,
+            "reason": "map_update"
+          }
+        ],
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.24998099999993428
+      },
+      {
+        "start_native_s": 1605.899294886,
+        "start_map": 0,
+        "accepted_updates": 2,
+        "rejected_updates": 0,
+        "end_native_s": 1605.999294886,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.09999999999990905
+      },
+      {
+        "start_native_s": 1606.599294887,
+        "start_map": 0,
+        "accepted_updates": 17,
+        "rejected_updates": 2,
+        "end_native_s": 1607.549294887,
+        "window_resets": [
+          {
+            "native_s": 1606.649294886,
+            "reason": "map_update"
+          },
+          {
+            "native_s": 1607.199294886,
+            "reason": "map_update"
+          }
+        ],
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.9500000000000455
+      },
+      {
+        "start_native_s": 1613.399294886,
+        "start_map": 0,
+        "accepted_updates": 5,
+        "rejected_updates": 1,
+        "end_native_s": 1613.699294886,
+        "window_resets": [
+          {
+            "native_s": 1613.699294886,
+            "reason": "map_update"
+          }
+        ],
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "invalid_window",
+        "duration_s": 0.2999999999999545
+      },
+      {
+        "start_native_s": 1631.549294924,
+        "start_map": 0,
+        "accepted_updates": 5,
+        "rejected_updates": 1,
+        "end_native_s": 1631.849294925,
+        "window_resets": [
+          {
+            "native_s": 1631.649294925,
+            "reason": "map_update"
+          }
+        ],
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.3000000010001713
+      },
+      {
+        "start_native_s": 1632.799313924,
+        "start_map": 0,
+        "accepted_updates": 4,
+        "rejected_updates": 0,
+        "end_native_s": 1632.999313925,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.2000000010000349
+      },
+      {
+        "start_native_s": 1633.749313925,
+        "start_map": 0,
+        "accepted_updates": 5,
+        "rejected_updates": 0,
+        "end_native_s": 1633.999313925,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.25
+      },
+      {
+        "start_native_s": 1639.449294925,
+        "start_map": 0,
+        "accepted_updates": 3,
+        "rejected_updates": 1,
+        "end_native_s": 1639.649294925,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.20000000000004547
+      },
+      {
+        "start_native_s": 1722.749294924,
+        "start_map": 0,
+        "accepted_updates": 3,
+        "rejected_updates": 1,
+        "end_native_s": 1722.949294925,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.2000000010000349
+      },
+      {
+        "start_native_s": 1738.049275911,
+        "start_map": 0,
+        "accepted_updates": 4,
+        "rejected_updates": 0,
+        "end_native_s": 1738.249294886,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.20001897499992083
+      },
+      {
+        "start_native_s": 1739.249313925,
+        "start_map": 0,
+        "accepted_updates": 4,
+        "rejected_updates": 1,
+        "end_native_s": 1739.499313911,
+        "window_resets": [
+          {
+            "native_s": 1739.299313924,
+            "reason": "map_update"
+          }
+        ],
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.24999998599992068
+      },
+      {
+        "start_native_s": 1850.299275925,
+        "start_map": 0,
+        "accepted_updates": 4,
+        "rejected_updates": 0,
+        "end_native_s": 1850.499294924,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.2000189989998944
+      },
+      {
+        "start_native_s": 1852.199294925,
+        "start_map": 0,
+        "accepted_updates": 4,
+        "rejected_updates": 1,
+        "end_native_s": 1852.449294925,
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "retained_window_refined",
+        "duration_s": 0.25
+      },
+      {
+        "start_native_s": 1893.899313924,
+        "start_map": 0,
+        "accepted_updates": 4,
+        "rejected_updates": 0,
+        "end_native_s": 1894.099313924,
+        "window_resets": [
+          {
+            "native_s": 1894.099313924,
+            "reason": "map_update"
+          }
+        ],
+        "outcome": "recovered",
+        "end_map": 0,
+        "reason": "invalid_window",
+        "duration_s": 0.20000000000004547
+      }
+    ],
+    "accepted_pose_audit": {
+      "accepted_unique_timestamps": 72,
+      "accepted_timestamps_without_native_trace": [],
+      "accepted_online_state_counts": {
+        "3": 72
+      },
+      "accepted_pose_available_count": 72,
+      "accepted_marked_coasting_count": 72,
+      "accepted_exported_across_all_independent_maps": 72,
+      "accepted_exported_in_scored_map": 72,
+      "note": "SOS state 3 is RECENTLY_LOST, distinct from mature tracking state 2; retained exports remain estimates, not proof of visual recovery."
+    },
+    "promoted_landmarks": 1648,
+    "accepted_inliers_range": [
+      35,
+      285
+    ],
+    "maximum_accepted_pose_delta_m": 0.00086600281,
+    "maximum_accepted_active_inertial_chi2": 51.18247,
+    "recovery_map_inliers_range": [
+      17,
+      182
+    ],
+    "recovery_window_results": {
+      "retained_window_refined": 13,
+      "invalid_window": 2
+    },
+    "rejection_reasons": {
+      "invalid_window": 10
+    },
+    "cache_reset_reasons": {
+      "map_update": 4628
+    },
+    "malformed_log_rows": 0
+  },
+  "late_discontinuities": [
+    {
+      "native_time_s": 1607.199294886,
+      "online_native_time_s": 1607.199294886,
+      "final_native_time_s": 1607.199294886,
+      "online_adjacent_step_m": 4.276224962300279,
+      "final_adjacent_step_m": 1.6188280046888963,
+      "final_interval_s": 0.049999999999954525,
+      "final_coordinate_frame": "map_0_init_29_body0",
+      "online_map_id": "0",
+      "online_map_init_kf_id": "29",
+      "online_world_version": "3",
+      "online_state": "3",
+      "online_inliers": "1"
+    },
+    {
+      "native_time_s": 1613.699294886,
+      "online_native_time_s": 1613.699294886,
+      "final_native_time_s": 1613.699294886,
+      "online_adjacent_step_m": 0.9244123502018866,
+      "final_adjacent_step_m": 0.17323773316507118,
+      "final_interval_s": 0.049999999999954525,
+      "final_coordinate_frame": "map_0_init_29_body0",
+      "online_map_id": "0",
+      "online_map_init_kf_id": "29",
+      "online_world_version": "3",
+      "online_state": "2",
+      "online_inliers": "30"
+    }
+  ],
+  "native_tests": {
+    "results_path": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_babyfeats_20261003/tests/native_solver_02/results.json",
+    "results_sha256": "9eb165dbeae707cc70858896486c20e4a14385680014acb8982a276eea98fa2d",
+    "returncode": 0,
+    "passed_checks": 14,
+    "checks": [
+      "native dual-fisheye temporaries constrain both cameras",
+      "metric anchor and correct VI motion are preserved",
+      "fixed map anchor remains untouched",
+      "temporary depth comes from metric native multiview geometry",
+      "actual visual factors correct noisy-IMU current pose",
+      "shuffled temporal correspondences are rejected",
+      "rejection is transactional for caller pose and velocity",
+      "IMU alone cannot be reported as BabyFeature success",
+      "single-view observations cannot supply temporary landmarks",
+      "zero-parallax XYZ tracks are declined without invented depth",
+      "wrong IMU interval cannot silently connect nonadjacent frames",
+      "two-view temporal features can support the established metric IMU state",
+      "verified returning endpoint refines retained intervening states",
+      "returning mature-map pose is fixed during interval refinement"
+    ],
+    "fixture_sha256": "0984440e454b4891e29a8306f8da6832c433d9a0c0d7e924bc5aac3afb90aa00",
+    "library_sha256": "c3289348b0d0ac07caeb94d07524eef3992bc5ccdbb26fb0256513ed2b1c94c2",
+    "build_manifest_sha256": "a424a28ccabe557d83138ca5e9c375222460693d1bf4cfee48ddbcd10ec54c26",
+    "controlled_drift_correction_m": {
+      "before": 0.08,
+      "after": 0.00443047,
+      "condition": "Synthetic native-camera fixture with explicitly relaxed IMU covariance, not production drift measurement."
+    }
+  },
+  "hashes": {
+    "estimator_files": {
+      "config": {
+        "path": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/babyfeats_20261003/long_native.yaml",
+        "sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c"
+      },
+      "base_config": {
+        "path": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/online_full_v2_transfer_20261003/long_native.yaml",
+        "sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c"
+      },
+      "build_manifest": {
+        "path": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_babyfeats_20261003/build_manifest.json",
+        "sha256": "a424a28ccabe557d83138ca5e9c375222460693d1bf4cfee48ddbcd10ec54c26"
+      },
+      "library": {
+        "path": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_babyfeats_20261003/lib/libORB_SLAM3.so",
+        "sha256": "c3289348b0d0ac07caeb94d07524eef3992bc5ccdbb26fb0256513ed2b1c94c2"
+      },
+      "runner": {
+        "path": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_babyfeats_20261003/bin/stereo_lamaria_euroc",
+        "sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66"
+      },
+      "suite_manifest": {
+        "path": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/suite_20261002.json",
+        "sha256": "4c0fefd33cfb4c9831ea0021702626acd36799595eb48c569d81a824b6c05ad0"
+      }
+    },
+    "source_files": {
+      "src/Tracking.cc": "43d689213076f01ad1449f8827790701672c45e5ad5fbbcfa464cf7da4568d37",
+      "src/LamariaBabySolver.cc": "a866cedef75ce8554bf084abf903f13cf8a573cf2cb1ee997bb09a9bc4e25934",
+      "include/LamariaBabySolver.h": "a3640d8ebb217b94344fa829e9ff0190883395866b6b6b39fd12bf6a9bf14986",
+      "include/LamariaBabyTracker.h": "d306f6461bf175387e9c6bef73b7e3f35ad395b360c27930a5bc4349e355527d"
+    },
+    "delta_patch_sha256": "31f8acaac6a83677f95bd0fdab712fe0a771a372a5951b75d126c23a0713400c",
+    "geometry_patch_sha256": "d0f5ed7b71087b3749196eacde3aed26994e3474f5a24d6dec0592ba4a7d566e",
+    "score_sha256": "e990b96e55675d54ea52b200b3ea0a49e805c39019b75ca4d8f850b9541626de",
+    "input_timestamps_sha256": "796b89976b02b441b34d1203196b14b2596a4b5d23e71ea4a165bc120fe0442d",
+    "calibrated_imu_csv_sha256": "3f4ff94e86ce0c4e6f056facd665f50a234c59f24b668f2d5bd1acaa0f6e3803",
+    "estimator_files_unchanged_during_replay": true
+  },
+  "visualizations": {
+    "overview": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/diagnostics.png",
+    "continuity": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/babyfeats_diagnostics/continuity.png",
+    "first_sos_cameras": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/babyfeats_diagnostics_live/first_sos_cameras.png",
+    "first_sos_motion": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/babyfeats_diagnostics_live/first_sos_motion.png",
+    "late_sos": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/babyfeats_diagnostics/late_sos_audit.png",
+    "full_rerun_generated_by_this_experiment": false
+  },
+  "limitations": [
+    "One full Long replay, no unchanged Long repeat in this batch.",
+    "Saved v2 had already split before this run first activates SOS; passive work changes scheduling, so early improvement is not attributable to active Baby factors.",
+    "Preserving one map enables further periodic calibration/VI trials: 29/4 versus saved v2 only one accepted update.",
+    "Oldest rolling state is fixed; no full uncertainty-preserving marginalization prior.",
+    "Only up to eight states are refined on return, not the entire lost interval.",
+    "Pure rotation/insufficient parallax and complete visual blindness cannot supply temporary XYZ constraints.",
+    "Existing normal-map recovery acceptance remains unchanged; observed return support ranges from 17 to 182 inliers.",
+    "Full exported coverage includes coasting and is distinct from normal visual tracking coverage.",
+    "Historical Long uses different initial calibration and is not a matched ablation."
+  ]
+}
