@@ -1,0 +1,1942 @@
+{
+  "scope": "Read-only existing frozen v2 logs and production source; no builds or SLAM runs.",
+  "runs": {
+    "medium_full": {
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full",
+      "log": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/run.log",
+      "coverage": {
+        "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full",
+        "input_frames": 23746,
+        "input_start_s": 68.43737483700001,
+        "input_end_s": 1255.6873938370002,
+        "input_span_s": 1187.250019,
+        "completed_active_map_resets": 4,
+        "new_map_events": 3,
+        "retained_map_keyframes": [
+          {
+            "map_id": 0,
+            "keyframes": 874
+          },
+          {
+            "map_id": 1,
+            "keyframes": 672
+          },
+          {
+            "map_id": 2,
+            "keyframes": 40
+          }
+        ],
+        "estimator_returncode": 0,
+        "export_returncode": null,
+        "pose_export_scope": "All surviving atlas maps, each in its own explicitly named frame",
+        "segments": [
+          {
+            "coordinate_frame": "map_0_init_0_body0",
+            "map_id": 0,
+            "map_init_kf_id": 0,
+            "exported_rows": 14131,
+            "unique_input_frames": 14131,
+            "contiguous_spans": [
+              {
+                "frames": 14131,
+                "start_s": 71.13737483700001,
+                "end_s": 777.637374787,
+                "duration_s": 706.49999995
+              }
+            ],
+            "global_anchor_available": false
+          },
+          {
+            "coordinate_frame": "map_1_init_2008_body0",
+            "map_id": 1,
+            "map_init_kf_id": 2008,
+            "exported_rows": 8558,
+            "unique_input_frames": 8558,
+            "contiguous_spans": [
+              {
+                "frames": 8558,
+                "start_s": 799.587393837,
+                "end_s": 1227.4373938370002,
+                "duration_s": 427.85000000000014
+              }
+            ],
+            "global_anchor_available": false
+          },
+          {
+            "coordinate_frame": "map_2_init_2999_body0",
+            "map_id": 2,
+            "map_init_kf_id": 2999,
+            "exported_rows": 199,
+            "unique_input_frames": 199,
+            "contiguous_spans": [
+              {
+                "frames": 199,
+                "start_s": 1245.787393837,
+                "end_s": 1255.6873938370002,
+                "duration_s": 9.900000000000091
+              }
+            ],
+            "global_anchor_available": false
+          }
+        ],
+        "independent_segments_exported": 3,
+        "unique_input_frames_with_exported_pose": 22888,
+        "exported_pose_fraction": 0.9638675987534743,
+        "longest_independently_framed_contiguous_segment": {
+          "frames": 14131,
+          "start_s": 71.13737483700001,
+          "end_s": 777.637374787,
+          "duration_s": 706.49999995
+        },
+        "online_pose_rows": 23746,
+        "online_pose_rows_cover_every_input": true,
+        "online_quality_source": "Explicit per-input pose/state trace, including initialization and early returns",
+        "logged_native_frames": 23746,
+        "unlogged_native_frames": 0,
+        "logged_visual_ok_frames": 22643,
+        "logged_visual_ok_fraction": 0.9535500715910048,
+        "logged_coasted_frames": 450,
+        "logged_visual_ok_without_final_export": 201,
+        "exported_pose_with_logged_visual_ok": 22442,
+        "exported_pose_with_logged_coasting": 446,
+        "online_map_epochs": [
+          {
+            "map_id": 0,
+            "map_init_kf_id": 0,
+            "pose_frames": 14131,
+            "contiguous_spans": [
+              {
+                "frames": 14131,
+                "start_s": 71.13737483700001,
+                "end_s": 777.637374787,
+                "duration_s": 706.49999995
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 1973,
+            "pose_frames": 116,
+            "contiguous_spans": [
+              {
+                "frames": 116,
+                "start_s": 778.137374837,
+                "end_s": 783.887374787,
+                "duration_s": 5.74999994999996
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 1996,
+            "pose_frames": 37,
+            "contiguous_spans": [
+              {
+                "frames": 37,
+                "start_s": 784.487393837,
+                "end_s": 786.287374837,
+                "duration_s": 1.7999810000000025
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 2004,
+            "pose_frames": 15,
+            "contiguous_spans": [
+              {
+                "frames": 15,
+                "start_s": 793.5373747870001,
+                "end_s": 794.237393837,
+                "duration_s": 0.7000190499999235
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 2008,
+            "pose_frames": 8558,
+            "contiguous_spans": [
+              {
+                "frames": 8558,
+                "start_s": 799.587393837,
+                "end_s": 1227.4373938370002,
+                "duration_s": 427.85000000000014
+              }
+            ]
+          },
+          {
+            "map_id": 2,
+            "map_init_kf_id": 2990,
+            "pose_frames": 37,
+            "contiguous_spans": [
+              {
+                "frames": 37,
+                "start_s": 1237.5873558370001,
+                "end_s": 1239.387393837,
+                "duration_s": 1.8000379999998586
+              }
+            ]
+          },
+          {
+            "map_id": 2,
+            "map_init_kf_id": 2999,
+            "pose_frames": 199,
+            "contiguous_spans": [
+              {
+                "frames": 199,
+                "start_s": 1245.787393837,
+                "end_s": 1255.6873938370002,
+                "duration_s": 9.900000000000091
+              }
+            ]
+          }
+        ],
+        "final_history_status_counts": {
+          "exported": 22888,
+          "cleared_or_unretained_map": 144,
+          "marked_lost": 61
+        },
+        "interpretation": [
+          "A retained final pose can include IMU-only coasting; pose coverage is not visual success.",
+          "Independent-map pose coverage is not a continuous global trajectory. No transform between independent maps is invented.",
+          "Visual OK without final export can mean either largest-only suppression or a later cleared map; legacy outputs cannot disambiguate.",
+          "Online snapshots preserve estimates before reset, but do not retrospectively follow optimization and may change gauge at world_version updates."
+        ]
+      },
+      "score": {
+        "sequence": "sequence_2_11",
+        "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full",
+        "evaluation": "LaMAria official functions, local evaluation only",
+        "Score2D": 62.76479920913107,
+        "CPRecall@1m_percent": 72.22222222222221,
+        "PoseRecall@5m_percent": 61.20499632623071,
+        "PoseRecall@1m_percent": 60.641685035513106,
+        "CP_total": 18,
+        "CP_triangulated": 13,
+        "CP_within_1m": 13,
+        "GT_total_denominator": 4083,
+        "GT_associated": 2499,
+        "GT_unmatched_count": 1584,
+        "GT_unmatched_before_first_estimate": 4,
+        "GT_unmatched_after_last_estimate": 1580,
+        "pose_count_within_5m": 2499,
+        "pose_count_within_1m": 2476,
+        "estimated_poses": 14131,
+        "native_input_frames": 23748,
+        "processed_input_frames": 23746,
+        "unsupported_boundary_frames": 2,
+        "unsupported_boundary_prefix_frames": 0,
+        "unsupported_boundary_suffix_frames": 2,
+        "missing_native_input_poses": 9617,
+        "missing_processed_input_poses": 9615,
+        "pose_coverage_fraction": 0.5950395822806132,
+        "processed_pose_coverage_fraction": 0.5950896993177799,
+        "pose_to_input_max_difference_ns": 0,
+        "map_epochs": 1,
+        "source_timestamp_scope": "full source recording supplied",
+        "trajectory_selection": {
+          "policy": "largest",
+          "selected_coordinate_frame": "map_0_init_0_body0",
+          "selected_map_id": "0",
+          "selected_map_init_kf_id": "0",
+          "selected_pose_count": 14131,
+          "atlas_pose_count": 22888,
+          "atlas_map_epochs": 3,
+          "omitted_other_map_poses": 8757,
+          "available_maps": [
+            {
+              "coordinate_frame": "map_0_init_0_body0",
+              "poses": 14131
+            },
+            {
+              "coordinate_frame": "map_1_init_2008_body0",
+              "poses": 8558
+            },
+            {
+              "coordinate_frame": "map_2_init_2999_body0",
+              "poses": 199
+            }
+          ],
+          "uses_ground_truth_for_selection": false
+        },
+        "pGT_association_max_difference_ns": 0,
+        "associated_horizontal_error_m": {
+          "median": 0.21963679002589157,
+          "rmse": 0.33814589111825427,
+          "p90": 0.4952717924530926,
+          "maximum": 1.653868608124505
+        },
+        "CP_sim3": {
+          "scale": 1.010361082924721,
+          "rotation_xyzw": [
+            0.06858126546039155,
+            0.6269650391647569,
+            -0.049856282631395896,
+            0.7744196541767033
+          ],
+          "translation": [
+            -329.0799958500401,
+            -198.03015877547008,
+            7.869085615693119
+          ]
+        },
+        "protocol_notes": [
+          "Horizontal XY errors, not 3D ATE.",
+          "One CP-derived Sim3; no separate dense-GT fit.",
+          "Missing GT timestamps count as failures in the full PoseRecall denominator; they do not directly change Score2D.",
+          "Score2D averages the official piecewise control-point error score; missing control points contribute zero.",
+          "Missing input poses remain absent; no gap filling or independent-map stitching.",
+          "Local per-sequence score, not a leaderboard submission."
+        ]
+      },
+      "recovery": {
+        "attempts": 438,
+        "successes": 0,
+        "hypotheses": 2,
+        "bow_cam0_total": 23,
+        "bow_cam1_total": 9
+      },
+      "relatch": {
+        "attempts": 446,
+        "successes": 0
+      },
+      "inertial_rejection_audit": {
+        "rows": 446,
+        "max_accepted_velocity_delta_mps": 0,
+        "non_null_prior_rows": 0
+      },
+      "focus_intervals": [
+        {
+          "range_native_s": [
+            766.58,
+            771.5
+          ],
+          "lm_rows": 99,
+          "lm_successes": 1,
+          "first_lm": {
+            "frame": 13963,
+            "time": 766.587374837,
+            "map": 0,
+            "state": 2,
+            "imu_initialized": 1,
+            "ba2": 1,
+            "success": 0,
+            "inliers": 12,
+            "local_points": 2393,
+            "local_keyframes": 51,
+            "already_seen": 10,
+            "bad": 0,
+            "frustum_checked": 2383,
+            "frustum_rejected": 1489,
+            "to_match": 894,
+            "cams": [
+              {
+                "detected": 487,
+                "incoming": 5,
+                "visible": 527,
+                "before_opt": 11,
+                "after_opt": 5,
+                "outliers": 6
+              },
+              {
+                "detected": 957,
+                "incoming": 5,
+                "visible": 642,
+                "before_opt": 19,
+                "after_opt": 7,
+                "outliers": 12
+              }
+            ],
+            "projection": {
+              "not_visible": 1499,
+              "far": 0,
+              "bad": 0,
+              "th": 2,
+              "ratio": 0.8,
+              "cams": [
+                {
+                  "visible": 527,
+                  "empty": 364,
+                  "candidates": 327,
+                  "occupied": 4,
+                  "stereo_error": 0,
+                  "occupied_only": 1,
+                  "geometry_only": 0,
+                  "descriptor": 152,
+                  "ratio": 4,
+                  "accepted": 6,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                },
+                {
+                  "visible": 642,
+                  "empty": 219,
+                  "candidates": 1169,
+                  "occupied": 64,
+                  "stereo_error": 0,
+                  "occupied_only": 10,
+                  "geometry_only": 0,
+                  "descriptor": 369,
+                  "ratio": 30,
+                  "accepted": 14,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                }
+              ],
+              "returned_matches": 20
+            },
+            "optimizer": "last_keyframe",
+            "map_updated": 1,
+            "coasting": 0,
+            "coast_armed": 1,
+            "coast_restore": 0,
+            "prior_exists": 0,
+            "opt_camera_displacement_m": 3.2368778e-05,
+            "opt_rotation_rad": 4.8646642e-05,
+            "pred_speed_mps": 0.56810427,
+            "opt_speed_mps": 0.56808275,
+            "opt_velocity_delta_mps": 4.3710144e-05,
+            "accepted_velocity_delta_mps": 0,
+            "pred_gyro_bias_norm": 0.0017891172,
+            "opt_gyro_bias_norm": 0.0017891172,
+            "opt_gyro_bias_delta": 0,
+            "pred_accel_bias_norm": 0.055284947,
+            "opt_accel_bias_norm": 0.055284947,
+            "opt_accel_bias_delta": 0,
+            "log_line": 53830
+          },
+          "last_lm": {
+            "frame": 14061,
+            "time": 771.487393837,
+            "map": 0,
+            "state": 3,
+            "imu_initialized": 1,
+            "ba2": 1,
+            "success": 1,
+            "inliers": 12,
+            "local_points": 913,
+            "local_keyframes": 20,
+            "already_seen": 0,
+            "bad": 0,
+            "frustum_checked": 913,
+            "frustum_rejected": 449,
+            "to_match": 464,
+            "cams": [
+              {
+                "detected": 413,
+                "incoming": 0,
+                "visible": 199,
+                "before_opt": 2,
+                "after_opt": 0,
+                "outliers": 2
+              },
+              {
+                "detected": 1446,
+                "incoming": 0,
+                "visible": 338,
+                "before_opt": 13,
+                "after_opt": 12,
+                "outliers": 1
+              }
+            ],
+            "projection": {
+              "not_visible": 449,
+              "far": 0,
+              "bad": 0,
+              "th": 15,
+              "ratio": 0.8,
+              "cams": [
+                {
+                  "visible": 199,
+                  "empty": 0,
+                  "candidates": 13829,
+                  "occupied": 17,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 95,
+                  "ratio": 102,
+                  "accepted": 2,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                },
+                {
+                  "visible": 338,
+                  "empty": 0,
+                  "candidates": 21087,
+                  "occupied": 227,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 96,
+                  "ratio": 229,
+                  "accepted": 13,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                }
+              ],
+              "returned_matches": 15
+            },
+            "optimizer": "last_keyframe",
+            "map_updated": 0,
+            "coasting": 1,
+            "coast_armed": 1,
+            "coast_restore": 0,
+            "prior_exists": 1,
+            "opt_camera_displacement_m": 0.17678779,
+            "opt_rotation_rad": 0.0035703052,
+            "pred_speed_mps": 1.1111299,
+            "opt_speed_mps": 1.1435099,
+            "opt_velocity_delta_mps": 0.089030169,
+            "accepted_velocity_delta_mps": 0.089030169,
+            "pred_gyro_bias_norm": 0.0017891172,
+            "opt_gyro_bias_norm": 0.0017891172,
+            "opt_gyro_bias_delta": 0,
+            "pred_accel_bias_norm": 0.055284947,
+            "opt_accel_bias_norm": 0.055284947,
+            "opt_accel_bias_delta": 0,
+            "log_line": 54438
+          },
+          "recovery_attempts": 98,
+          "recovery_successes": 0,
+          "recovery_hypotheses": 0,
+          "recovery_nonzero_bow_attempts": 0,
+          "relatch_attempts": 98,
+          "relatch_successes": 0
+        },
+        {
+          "range_native_s": [
+            772.63,
+            777.7
+          ],
+          "lm_rows": 101,
+          "lm_successes": 0,
+          "first_lm": {
+            "frame": 14084,
+            "time": 772.637374837,
+            "map": 0,
+            "state": 2,
+            "imu_initialized": 1,
+            "ba2": 1,
+            "success": 0,
+            "inliers": 7,
+            "local_points": 2567,
+            "local_keyframes": 83,
+            "already_seen": 5,
+            "bad": 0,
+            "frustum_checked": 2562,
+            "frustum_rejected": 1890,
+            "to_match": 672,
+            "cams": [
+              {
+                "detected": 1450,
+                "incoming": 2,
+                "visible": 114,
+                "before_opt": 14,
+                "after_opt": 3,
+                "outliers": 11
+              },
+              {
+                "detected": 957,
+                "incoming": 3,
+                "visible": 583,
+                "before_opt": 15,
+                "after_opt": 4,
+                "outliers": 11
+              }
+            ],
+            "projection": {
+              "not_visible": 1895,
+              "far": 0,
+              "bad": 0,
+              "th": 2,
+              "ratio": 0.8,
+              "cams": [
+                {
+                  "visible": 114,
+                  "empty": 60,
+                  "candidates": 194,
+                  "occupied": 7,
+                  "stereo_error": 0,
+                  "occupied_only": 1,
+                  "geometry_only": 0,
+                  "descriptor": 38,
+                  "ratio": 4,
+                  "accepted": 11,
+                  "invalid_level": 0,
+                  "companion_written": 1,
+                  "companion_conflict": 0
+                },
+                {
+                  "visible": 583,
+                  "empty": 126,
+                  "candidates": 1828,
+                  "occupied": 37,
+                  "stereo_error": 0,
+                  "occupied_only": 4,
+                  "geometry_only": 0,
+                  "descriptor": 412,
+                  "ratio": 29,
+                  "accepted": 12,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                }
+              ],
+              "returned_matches": 24
+            },
+            "optimizer": "last_frame",
+            "map_updated": 0,
+            "coasting": 0,
+            "coast_armed": 1,
+            "coast_restore": 0,
+            "prior_exists": 0,
+            "opt_camera_displacement_m": 3.4962279e-05,
+            "opt_rotation_rad": 5.9902242e-05,
+            "pred_speed_mps": 0.49678195,
+            "opt_speed_mps": 0.49681711,
+            "opt_velocity_delta_mps": 6.1404178e-05,
+            "accepted_velocity_delta_mps": 0,
+            "pred_gyro_bias_norm": 0.0026437067,
+            "opt_gyro_bias_norm": 0.0026443256,
+            "opt_gyro_bias_delta": 1.1602331e-06,
+            "pred_accel_bias_norm": 0.028109122,
+            "opt_accel_bias_norm": 0.028108655,
+            "opt_accel_bias_delta": 1.7485985e-06,
+            "log_line": 54541
+          },
+          "last_lm": {
+            "frame": 14184,
+            "time": 777.637374787,
+            "map": 0,
+            "state": 3,
+            "imu_initialized": 1,
+            "ba2": 1,
+            "success": 0,
+            "inliers": 0,
+            "local_points": 686,
+            "local_keyframes": 20,
+            "already_seen": 0,
+            "bad": 0,
+            "frustum_checked": 686,
+            "frustum_rejected": 446,
+            "to_match": 240,
+            "cams": [
+              {
+                "detected": 690,
+                "incoming": 0,
+                "visible": 173,
+                "before_opt": 1,
+                "after_opt": 0,
+                "outliers": 1
+              },
+              {
+                "detected": 1462,
+                "incoming": 0,
+                "visible": 106,
+                "before_opt": 3,
+                "after_opt": 0,
+                "outliers": 3
+              }
+            ],
+            "projection": {
+              "not_visible": 446,
+              "far": 0,
+              "bad": 0,
+              "th": 15,
+              "ratio": 0.8,
+              "cams": [
+                {
+                  "visible": 173,
+                  "empty": 0,
+                  "candidates": 20449,
+                  "occupied": 14,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 86,
+                  "ratio": 86,
+                  "accepted": 1,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                },
+                {
+                  "visible": 106,
+                  "empty": 0,
+                  "candidates": 12679,
+                  "occupied": 38,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 6,
+                  "ratio": 97,
+                  "accepted": 3,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                }
+              ],
+              "returned_matches": 4
+            },
+            "optimizer": "last_keyframe",
+            "map_updated": 0,
+            "coasting": 1,
+            "coast_armed": 1,
+            "coast_restore": 0,
+            "prior_exists": 0,
+            "opt_camera_displacement_m": 0.36459371,
+            "opt_rotation_rad": 0.0050883503,
+            "pred_speed_mps": 1.0549904,
+            "opt_speed_mps": 0.93886119,
+            "opt_velocity_delta_mps": 0.1784502,
+            "accepted_velocity_delta_mps": 0,
+            "pred_gyro_bias_norm": 0.0026437067,
+            "opt_gyro_bias_norm": 0.002643703,
+            "opt_gyro_bias_delta": 2.6803787e-07,
+            "pred_accel_bias_norm": 0.028109122,
+            "opt_accel_bias_norm": 0.028108012,
+            "opt_accel_bias_delta": 1.1159173e-06,
+            "log_line": 55157
+          },
+          "recovery_attempts": 101,
+          "recovery_successes": 0,
+          "recovery_hypotheses": 0,
+          "recovery_nonzero_bow_attempts": 0,
+          "relatch_attempts": 101,
+          "relatch_successes": 0
+        }
+      ],
+      "events": [
+        {
+          "log_line": 61,
+          "text": "Creation of new map with id: 0"
+        },
+        {
+          "log_line": 1496,
+          "text": "[CALIBRATION-COMMIT] t=86.537374837 map=0 cam=0 params=241.536072,241.536072,323.853058,241.582458,-0.0231560189,0.0956047699,-0.0632420555,0.00622777315,0.00348825124,-0.000731707958,0.00121518364,0.000815017091,-0.00173297187,-0.00021477406,-0.000979219214,-0.000517430017"
+        },
+        {
+          "log_line": 1497,
+          "text": "[CALIBRATION-COMMIT] t=86.537374837 map=0 cam=1 params=241.085022,241.085022,322.15744,240.57518,-0.023390064,0.0958743319,-0.0640406087,0.00623696111,0.00374701805,-0.000798374647,0.00211948063,-0.00108203699,-0.00252050208,-4.07083171e-05,0.00169217016,-2.10701019e-05"
+        },
+        {
+          "log_line": 1498,
+          "text": "[CALIBRATION-TRIAL] t=86.537374837 accepted=1 initial_cost=17254.3923 fixed_cost=16329.5102 final_cost=15077.716 keyframes=38 points=4261"
+        },
+        {
+          "log_line": 6582,
+          "text": "[CALIBRATION-COMMIT] t=146.787374837 map=0 cam=0 params=241.765366,241.765366,323.947479,241.663116,-0.0250478946,0.0971299335,-0.0633060858,0.00610578153,0.00345041556,-0.000742845237,0.00124451809,0.00088916783,-0.00155424792,-0.000286660274,-0.00111119717,-0.000669786939"
+        },
+        {
+          "log_line": 6583,
+          "text": "[CALIBRATION-COMMIT] t=146.787374837 map=0 cam=1 params=241.311508,241.311508,322.426758,240.54071,-0.024575904,0.0962518007,-0.0639373139,0.00622690003,0.00373616721,-0.000802752795,0.00187239028,-0.00123581663,-0.00242491369,0.000123959966,0.00168133108,0.000126308354"
+        },
+        {
+          "log_line": 6584,
+          "text": "[CALIBRATION-TRIAL] t=146.787374837 accepted=1 initial_cost=30096.4423 fixed_cost=26710.9145 final_cost=26585.5658 keyframes=65 points=7604"
+        },
+        {
+          "log_line": 11278,
+          "text": "[CALIBRATION-TRIAL] t=207.287393837 accepted=0 reason=no_heldout_improvement"
+        },
+        {
+          "log_line": 11415,
+          "text": "[Debug] COAST: engaged, anchor KF 451 (9 inliers this frame)"
+        },
+        {
+          "log_line": 11419,
+          "text": "[Debug] COAST: exit, vision confirmed (11 inliers)"
+        },
+        {
+          "log_line": 11523,
+          "text": "[Debug] COAST: engaged, anchor KF 455 (12 inliers this frame)"
+        },
+        {
+          "log_line": 11552,
+          "text": "[Debug] COAST: exit, vision confirmed (11 inliers)"
+        },
+        {
+          "log_line": 13268,
+          "text": "[Debug] COAST: engaged, anchor KF 550 (14 inliers this frame)"
+        },
+        {
+          "log_line": 13310,
+          "text": "[Debug] COAST: exit, vision confirmed (11 inliers)"
+        },
+        {
+          "log_line": 15362,
+          "text": "[CALIBRATION-COMMIT] t=267.537374837 map=0 cam=0 params=241.937698,241.937698,323.79007,241.752655,-0.0230204035,0.0957801417,-0.0633913055,0.00616822392,0.00347214262,-0.000736704154,0.00154231745,0.00103852805,-0.0011542479,-0.000657078926,-0.00124757923,-0.000707749627"
+        },
+        {
+          "log_line": 15363,
+          "text": "[CALIBRATION-COMMIT] t=267.537374837 map=0 cam=1 params=241.513702,241.513702,322.280579,240.618317,-0.0247603953,0.0963179246,-0.0638703629,0.0062149833,0.00372275361,-0.000808539451,0.00192360475,-0.000986450235,-0.00207213475,-9.26902576e-05,0.00158487994,-7.11578559e-06"
+        },
+        {
+          "log_line": 15364,
+          "text": "[CALIBRATION-TRIAL] t=267.537374837 accepted=1 initial_cost=66528.2256 fixed_cost=54512.1392 final_cost=53803.6465 keyframes=265 points=15679"
+        },
+        {
+          "log_line": 20212,
+          "text": "[CALIBRATION-TRIAL] t=327.787374837 accepted=0 reason=no_heldout_improvement"
+        },
+        {
+          "log_line": 25280,
+          "text": "[CALIBRATION-COMMIT] t=388.137374837 map=0 cam=0 params=241.995193,241.995193,323.891357,241.857697,-0.0228210259,0.0954283029,-0.0632420257,0.00619643833,0.00347189838,-0.000738191127,0.00143593072,0.00108145177,-0.00103565562,-0.00066540757,-0.00137093267,-0.000689116016"
+        },
+        {
+          "log_line": 25281,
+          "text": "[CALIBRATION-COMMIT] t=388.137374837 map=0 cam=1 params=241.466064,241.466064,322.364197,240.681046,-0.0237133503,0.0956122726,-0.0638094619,0.00624842988,0.00372971338,-0.00080722518,0.00184009667,-0.00102133059,-0.0021557624,-3.0812349e-05,0.00151567627,-3.29032737e-05"
+        },
+        {
+          "log_line": 25282,
+          "text": "[CALIBRATION-TRIAL] t=388.137374837 accepted=1 initial_cost=93440.4896 fixed_cost=85818.5256 final_cost=85774.9646 keyframes=362 points=25262"
+        },
+        {
+          "log_line": 30255,
+          "text": "[CALIBRATION-TRIAL] t=448.737393837 accepted=0 reason=objective no_heldout_improvement parameter_bound_cam0"
+        },
+        {
+          "log_line": 35292,
+          "text": "[CALIBRATION-TRIAL] t=510.287374837 accepted=0 reason=no_heldout_improvement"
+        },
+        {
+          "log_line": 40349,
+          "text": "[CALIBRATION-TRIAL] t=570.387374837 accepted=0 reason=objective heldout_cam0_bin1 no_heldout_improvement parameter_bound_cam0"
+        },
+        {
+          "log_line": 44609,
+          "text": "[CALIBRATION-TRIAL] t=630.487393837 accepted=0 reason=objective no_heldout_improvement parameter_bound_cam0"
+        },
+        {
+          "log_line": 45972,
+          "text": "[Debug] COAST: engaged, anchor KF 1702 (14 inliers this frame)"
+        },
+        {
+          "log_line": 46240,
+          "text": "[Debug] COAST: exit, vision confirmed (15 inliers)"
+        },
+        {
+          "log_line": 49326,
+          "text": "[CALIBRATION-TRIAL] t=702.737393837 accepted=0 reason=objective no_heldout_improvement parameter_bound_cam0"
+        },
+        {
+          "log_line": 53583,
+          "text": "[CALIBRATION-TRIAL] t=763.387374837 accepted=0 reason=objective no_heldout_improvement parameter_bound_cam0"
+        },
+        {
+          "log_line": 53832,
+          "text": "[Debug] COAST: engaged, anchor KF 1963 (12 inliers this frame)"
+        },
+        {
+          "log_line": 54439,
+          "text": "[Debug] COAST: exit, vision confirmed (12 inliers)"
+        },
+        {
+          "log_line": 54543,
+          "text": "[Debug] COAST: engaged, anchor KF 1972 (7 inliers this frame)"
+        },
+        {
+          "log_line": 55164,
+          "text": "[Debug] COAST: abandoned (grace expired), stock LOST handling"
+        },
+        {
+          "log_line": 55165,
+          "text": "Creation of new map with id: 1"
+        },
+        {
+          "log_line": 71801,
+          "text": "[Debug] COAST: engaged, anchor KF 2573 (12 inliers this frame)"
+        },
+        {
+          "log_line": 71813,
+          "text": "[Debug] COAST: exit, vision confirmed (11 inliers)"
+        },
+        {
+          "log_line": 78450,
+          "text": "[Debug] COAST: engaged, anchor KF 2786 (12 inliers this frame)"
+        },
+        {
+          "log_line": 78639,
+          "text": "[Debug] COAST: exit, vision confirmed (25 inliers)"
+        },
+        {
+          "log_line": 80210,
+          "text": "[Debug] COAST: engaged, anchor KF 2838 (13 inliers this frame)"
+        },
+        {
+          "log_line": 80490,
+          "text": "[Debug] COAST: exit, vision confirmed (12 inliers)"
+        },
+        {
+          "log_line": 84977,
+          "text": "[Debug] COAST: engaged, anchor KF 2989 (14 inliers this frame)"
+        },
+        {
+          "log_line": 85598,
+          "text": "[Debug] COAST: abandoned (grace expired), stock LOST handling"
+        },
+        {
+          "log_line": 85599,
+          "text": "Creation of new map with id: 2"
+        }
+      ]
+    },
+    "long_native_full": {
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full",
+      "log": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/run.log",
+      "coverage": {
+        "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full",
+        "input_frames": 35842,
+        "input_start_s": 152.349294899,
+        "input_end_s": 1944.3992949110002,
+        "input_span_s": 1792.0500000120003,
+        "completed_active_map_resets": 13,
+        "new_map_events": 5,
+        "retained_map_keyframes": [
+          {
+            "map_id": 0,
+            "keyframes": 131
+          },
+          {
+            "map_id": 1,
+            "keyframes": 994
+          },
+          {
+            "map_id": 2,
+            "keyframes": 658
+          },
+          {
+            "map_id": 3,
+            "keyframes": 85
+          },
+          {
+            "map_id": 4,
+            "keyframes": 279
+          }
+        ],
+        "estimator_returncode": 0,
+        "export_returncode": null,
+        "pose_export_scope": "All surviving atlas maps, each in its own explicitly named frame",
+        "segments": [
+          {
+            "coordinate_frame": "map_0_init_29_body0",
+            "map_id": 0,
+            "map_init_kf_id": 29,
+            "exported_rows": 997,
+            "unique_input_frames": 997,
+            "contiguous_spans": [
+              {
+                "frames": 997,
+                "start_s": 163.499313924,
+                "end_s": 213.299294924,
+                "duration_s": 49.799981
+              }
+            ],
+            "global_anchor_available": false
+          },
+          {
+            "coordinate_frame": "map_1_init_203_body0",
+            "map_id": 1,
+            "map_init_kf_id": 203,
+            "exported_rows": 17160,
+            "unique_input_frames": 17160,
+            "contiguous_spans": [
+              {
+                "frames": 17160,
+                "start_s": 224.549313912,
+                "end_s": 1082.499294924,
+                "duration_s": 857.949981012
+              }
+            ],
+            "global_anchor_available": false
+          },
+          {
+            "coordinate_frame": "map_2_init_2298_body0",
+            "map_id": 2,
+            "map_init_kf_id": 2298,
+            "exported_rows": 10586,
+            "unique_input_frames": 10586,
+            "contiguous_spans": [
+              {
+                "frames": 10586,
+                "start_s": 1082.649294925,
+                "end_s": 1611.899294886,
+                "duration_s": 529.249999961
+              }
+            ],
+            "global_anchor_available": false
+          },
+          {
+            "coordinate_frame": "map_3_init_3586_body0",
+            "map_id": 3,
+            "map_init_kf_id": 3586,
+            "exported_rows": 1291,
+            "unique_input_frames": 1291,
+            "contiguous_spans": [
+              {
+                "frames": 1291,
+                "start_s": 1663.2992949240002,
+                "end_s": 1727.7992949240002,
+                "duration_s": 64.5
+              }
+            ],
+            "global_anchor_available": false
+          },
+          {
+            "coordinate_frame": "map_4_init_3837_body0",
+            "map_id": 4,
+            "map_init_kf_id": 3837,
+            "exported_rows": 3272,
+            "unique_input_frames": 3272,
+            "contiguous_spans": [
+              {
+                "frames": 3272,
+                "start_s": 1780.8493139240002,
+                "end_s": 1944.3992949110002,
+                "duration_s": 163.54998098700003
+              }
+            ],
+            "global_anchor_available": false
+          }
+        ],
+        "independent_segments_exported": 5,
+        "unique_input_frames_with_exported_pose": 33306,
+        "exported_pose_fraction": 0.9292450198091624,
+        "longest_independently_framed_contiguous_segment": {
+          "frames": 17160,
+          "start_s": 224.549313912,
+          "end_s": 1082.499294924,
+          "duration_s": 857.949981012
+        },
+        "online_pose_rows": 35842,
+        "online_pose_rows_cover_every_input": true,
+        "online_quality_source": "Explicit per-input pose/state trace, including initialization and early returns",
+        "logged_native_frames": 35842,
+        "unlogged_native_frames": 0,
+        "logged_visual_ok_frames": 33567,
+        "logged_visual_ok_fraction": 0.9365269795212321,
+        "logged_coasted_frames": 521,
+        "logged_visual_ok_without_final_export": 769,
+        "exported_pose_with_logged_visual_ok": 32798,
+        "exported_pose_with_logged_coasting": 508,
+        "online_map_epochs": [
+          {
+            "map_id": 0,
+            "map_init_kf_id": 0,
+            "pose_frames": 148,
+            "contiguous_spans": [
+              {
+                "frames": 148,
+                "start_s": 155.8993139,
+                "end_s": 163.2493139,
+                "duration_s": 7.349999999999994
+              }
+            ]
+          },
+          {
+            "map_id": 0,
+            "map_init_kf_id": 29,
+            "pose_frames": 997,
+            "contiguous_spans": [
+              {
+                "frames": 997,
+                "start_s": 163.499313924,
+                "end_s": 213.299294924,
+                "duration_s": 49.799981
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 185,
+            "pose_frames": 21,
+            "contiguous_spans": [
+              {
+                "frames": 21,
+                "start_s": 215.64929491100003,
+                "end_s": 216.64929491100003,
+                "duration_s": 1.0
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 190,
+            "pose_frames": 12,
+            "contiguous_spans": [
+              {
+                "frames": 12,
+                "start_s": 216.849294925,
+                "end_s": 217.399294862,
+                "duration_s": 0.5499999369999955
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 193,
+            "pose_frames": 16,
+            "contiguous_spans": [
+              {
+                "frames": 16,
+                "start_s": 218.6493139,
+                "end_s": 219.399313925,
+                "duration_s": 0.7500000249999914
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 197,
+            "pose_frames": 4,
+            "contiguous_spans": [
+              {
+                "frames": 4,
+                "start_s": 219.949313912,
+                "end_s": 220.099313924,
+                "duration_s": 0.15000001199999247
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 199,
+            "pose_frames": 17,
+            "contiguous_spans": [
+              {
+                "frames": 17,
+                "start_s": 220.199294925,
+                "end_s": 220.99929492400003,
+                "duration_s": 0.7999999990000219
+              }
+            ]
+          },
+          {
+            "map_id": 1,
+            "map_init_kf_id": 203,
+            "pose_frames": 17160,
+            "contiguous_spans": [
+              {
+                "frames": 17160,
+                "start_s": 224.549313912,
+                "end_s": 1082.499294924,
+                "duration_s": 857.949981012
+              }
+            ]
+          },
+          {
+            "map_id": 2,
+            "map_init_kf_id": 2298,
+            "pose_frames": 10586,
+            "contiguous_spans": [
+              {
+                "frames": 10586,
+                "start_s": 1082.649294925,
+                "end_s": 1611.899294886,
+                "duration_s": 529.249999961
+              }
+            ]
+          },
+          {
+            "map_id": 3,
+            "map_init_kf_id": 3543,
+            "pose_frames": 156,
+            "contiguous_spans": [
+              {
+                "frames": 156,
+                "start_s": 1621.949313911,
+                "end_s": 1629.699294925,
+                "duration_s": 7.749981014000014
+              }
+            ]
+          },
+          {
+            "map_id": 3,
+            "map_init_kf_id": 3575,
+            "pose_frames": 16,
+            "contiguous_spans": [
+              {
+                "frames": 16,
+                "start_s": 1634.549313924,
+                "end_s": 1635.2993139110001,
+                "duration_s": 0.7499999870001375
+              }
+            ]
+          },
+          {
+            "map_id": 3,
+            "map_init_kf_id": 3579,
+            "pose_frames": 13,
+            "contiguous_spans": [
+              {
+                "frames": 13,
+                "start_s": 1643.849294925,
+                "end_s": 1644.449313925,
+                "duration_s": 0.6000189999999748
+              }
+            ]
+          },
+          {
+            "map_id": 3,
+            "map_init_kf_id": 3583,
+            "pose_frames": 11,
+            "contiguous_spans": [
+              {
+                "frames": 11,
+                "start_s": 1646.249313925,
+                "end_s": 1646.749313925,
+                "duration_s": 0.5
+              }
+            ]
+          },
+          {
+            "map_id": 3,
+            "map_init_kf_id": 3586,
+            "pose_frames": 1291,
+            "contiguous_spans": [
+              {
+                "frames": 1291,
+                "start_s": 1663.2992949240002,
+                "end_s": 1727.7992949240002,
+                "duration_s": 64.5
+              }
+            ]
+          },
+          {
+            "map_id": 4,
+            "map_init_kf_id": 3762,
+            "pose_frames": 181,
+            "contiguous_spans": [
+              {
+                "frames": 181,
+                "start_s": 1729.149294925,
+                "end_s": 1738.149294886,
+                "duration_s": 8.999999960999958
+              }
+            ]
+          },
+          {
+            "map_id": 4,
+            "map_init_kf_id": 3798,
+            "pose_frames": 49,
+            "contiguous_spans": [
+              {
+                "frames": 49,
+                "start_s": 1743.0993139240002,
+                "end_s": 1745.499313925,
+                "duration_s": 2.400000000999853
+              }
+            ]
+          },
+          {
+            "map_id": 4,
+            "map_init_kf_id": 3809,
+            "pose_frames": 138,
+            "contiguous_spans": [
+              {
+                "frames": 138,
+                "start_s": 1747.6493139240001,
+                "end_s": 1754.4993139,
+                "duration_s": 6.8499999759999355
+              }
+            ]
+          },
+          {
+            "map_id": 4,
+            "map_init_kf_id": 3837,
+            "pose_frames": 3272,
+            "contiguous_spans": [
+              {
+                "frames": 3272,
+                "start_s": 1780.8493139240002,
+                "end_s": 1944.3992949110002,
+                "duration_s": 163.54998098700003
+              }
+            ]
+          }
+        ],
+        "final_history_status_counts": {
+          "marked_lost": 148,
+          "exported": 33306,
+          "cleared_or_unretained_map": 634
+        },
+        "interpretation": [
+          "A retained final pose can include IMU-only coasting; pose coverage is not visual success.",
+          "Independent-map pose coverage is not a continuous global trajectory. No transform between independent maps is invented.",
+          "Visual OK without final export can mean either largest-only suppression or a later cleared map; legacy outputs cannot disambiguate.",
+          "Online snapshots preserve estimates before reset, but do not retrospectively follow optimization and may change gauge at world_version updates."
+        ]
+      },
+      "score": {
+        "sequence": "sequence_3_17",
+        "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full",
+        "evaluation": "LaMAria official functions, local evaluation only",
+        "Score2D": 34.458900755473394,
+        "CPRecall@1m_percent": 33.33333333333333,
+        "PoseRecall@5m_percent": 51.69990192873488,
+        "PoseRecall@1m_percent": 32.674076495586796,
+        "CP_total": 27,
+        "CP_triangulated": 15,
+        "CP_within_1m": 9,
+        "GT_total_denominator": 6118,
+        "GT_associated": 3163,
+        "GT_unmatched_count": 2955,
+        "GT_unmatched_before_first_estimate": 273,
+        "GT_unmatched_after_last_estimate": 2682,
+        "pose_count_within_5m": 3163,
+        "pose_count_within_1m": 1999,
+        "estimated_poses": 17160,
+        "native_input_frames": 35842,
+        "processed_input_frames": 35842,
+        "unsupported_boundary_frames": 0,
+        "unsupported_boundary_prefix_frames": 0,
+        "unsupported_boundary_suffix_frames": 0,
+        "missing_native_input_poses": 18682,
+        "missing_processed_input_poses": 18682,
+        "pose_coverage_fraction": 0.47876792589699235,
+        "processed_pose_coverage_fraction": 0.47876792589699235,
+        "pose_to_input_max_difference_ns": 0,
+        "map_epochs": 1,
+        "source_timestamp_scope": "full source recording supplied",
+        "trajectory_selection": {
+          "policy": "largest",
+          "selected_coordinate_frame": "map_1_init_203_body0",
+          "selected_map_id": "1",
+          "selected_map_init_kf_id": "203",
+          "selected_pose_count": 17160,
+          "atlas_pose_count": 33306,
+          "atlas_map_epochs": 5,
+          "omitted_other_map_poses": 16146,
+          "available_maps": [
+            {
+              "coordinate_frame": "map_0_init_29_body0",
+              "poses": 997
+            },
+            {
+              "coordinate_frame": "map_1_init_203_body0",
+              "poses": 17160
+            },
+            {
+              "coordinate_frame": "map_2_init_2298_body0",
+              "poses": 10586
+            },
+            {
+              "coordinate_frame": "map_3_init_3586_body0",
+              "poses": 1291
+            },
+            {
+              "coordinate_frame": "map_4_init_3837_body0",
+              "poses": 3272
+            }
+          ],
+          "uses_ground_truth_for_selection": false
+        },
+        "pGT_association_max_difference_ns": 1,
+        "associated_horizontal_error_m": {
+          "median": 0.7105705708918642,
+          "rmse": 1.3313643362213137,
+          "p90": 1.9608772866200876,
+          "maximum": 4.306656618315839
+        },
+        "CP_sim3": {
+          "scale": 0.9949018291135009,
+          "rotation_xyzw": [
+            -0.6635855461176968,
+            0.16682378445741855,
+            0.6731602504958947,
+            0.2804983512880008
+          ],
+          "translation": [
+            -223.13877620667137,
+            -376.62606895620235,
+            -6.034127264343861
+          ]
+        },
+        "protocol_notes": [
+          "Horizontal XY errors, not 3D ATE.",
+          "One CP-derived Sim3; no separate dense-GT fit.",
+          "Missing GT timestamps count as failures in the full PoseRecall denominator; they do not directly change Score2D.",
+          "Score2D averages the official piecewise control-point error score; missing control points contribute zero.",
+          "Missing input poses remain absent; no gap filling or independent-map stitching.",
+          "Local per-sequence score, not a leaderboard submission."
+        ]
+      },
+      "recovery": {
+        "attempts": 508,
+        "successes": 0,
+        "hypotheses": 38,
+        "bow_cam0_total": 72,
+        "bow_cam1_total": 170
+      },
+      "relatch": {
+        "attempts": 508,
+        "successes": 0
+      },
+      "inertial_rejection_audit": {
+        "rows": 508,
+        "max_accepted_velocity_delta_mps": 0,
+        "non_null_prior_rows": 0
+      },
+      "focus_intervals": [
+        {
+          "range_native_s": [
+            208.34,
+            213.36
+          ],
+          "lm_rows": 100,
+          "lm_successes": 0,
+          "first_lm": {
+            "frame": 1120,
+            "time": 208.349313899,
+            "map": 0,
+            "state": 2,
+            "imu_initialized": 1,
+            "ba2": 1,
+            "success": 0,
+            "inliers": 12,
+            "local_points": 3128,
+            "local_keyframes": 63,
+            "already_seen": 11,
+            "bad": 0,
+            "frustum_checked": 3117,
+            "frustum_rejected": 2419,
+            "to_match": 698,
+            "cams": [
+              {
+                "detected": 459,
+                "incoming": 3,
+                "visible": 397,
+                "before_opt": 3,
+                "after_opt": 3,
+                "outliers": 0
+              },
+              {
+                "detected": 857,
+                "incoming": 9,
+                "visible": 313,
+                "before_opt": 9,
+                "after_opt": 9,
+                "outliers": 0
+              }
+            ],
+            "projection": {
+              "not_visible": 2430,
+              "far": 0,
+              "bad": 0,
+              "th": 2,
+              "ratio": 0.8,
+              "cams": [
+                {
+                  "visible": 397,
+                  "empty": 344,
+                  "candidates": 213,
+                  "occupied": 0,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 43,
+                  "ratio": 10,
+                  "accepted": 0,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                },
+                {
+                  "visible": 313,
+                  "empty": 75,
+                  "candidates": 2652,
+                  "occupied": 33,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 158,
+                  "ratio": 80,
+                  "accepted": 0,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                }
+              ],
+              "returned_matches": 0
+            },
+            "optimizer": "last_frame",
+            "map_updated": 0,
+            "coasting": 0,
+            "coast_armed": 1,
+            "coast_restore": 0,
+            "prior_exists": 0,
+            "opt_camera_displacement_m": 0.0003854213,
+            "opt_rotation_rad": 0.00021585426,
+            "pred_speed_mps": 1.0286499,
+            "opt_speed_mps": 1.02853,
+            "opt_velocity_delta_mps": 0.0011274827,
+            "accepted_velocity_delta_mps": 0,
+            "pred_gyro_bias_norm": 0.00094737107,
+            "opt_gyro_bias_norm": 0.00095434336,
+            "opt_gyro_bias_delta": 1.4857837e-05,
+            "pred_accel_bias_norm": 0.020200068,
+            "opt_accel_bias_norm": 0.020347204,
+            "opt_accel_bias_delta": 0.00073276501,
+            "log_line": 4397
+          },
+          "last_lm": {
+            "frame": 1219,
+            "time": 213.299294924,
+            "map": 0,
+            "state": 3,
+            "imu_initialized": 1,
+            "ba2": 1,
+            "success": 0,
+            "inliers": 2,
+            "local_points": 809,
+            "local_keyframes": 20,
+            "already_seen": 0,
+            "bad": 0,
+            "frustum_checked": 809,
+            "frustum_rejected": 510,
+            "to_match": 299,
+            "cams": [
+              {
+                "detected": 1057,
+                "incoming": 0,
+                "visible": 294,
+                "before_opt": 2,
+                "after_opt": 0,
+                "outliers": 2
+              },
+              {
+                "detected": 938,
+                "incoming": 0,
+                "visible": 69,
+                "before_opt": 3,
+                "after_opt": 2,
+                "outliers": 1
+              }
+            ],
+            "projection": {
+              "not_visible": 510,
+              "far": 0,
+              "bad": 0,
+              "th": 15,
+              "ratio": 0.8,
+              "cams": [
+                {
+                  "visible": 294,
+                  "empty": 8,
+                  "candidates": 43968,
+                  "occupied": 114,
+                  "stereo_error": 0,
+                  "occupied_only": 1,
+                  "geometry_only": 0,
+                  "descriptor": 93,
+                  "ratio": 190,
+                  "accepted": 2,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                },
+                {
+                  "visible": 69,
+                  "empty": 0,
+                  "candidates": 4957,
+                  "occupied": 58,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 38,
+                  "ratio": 28,
+                  "accepted": 3,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                }
+              ],
+              "returned_matches": 5
+            },
+            "optimizer": "last_keyframe",
+            "map_updated": 0,
+            "coasting": 1,
+            "coast_armed": 1,
+            "coast_restore": 0,
+            "prior_exists": 0,
+            "opt_camera_displacement_m": 0.14807029,
+            "opt_rotation_rad": 0.0029782499,
+            "pred_speed_mps": 0.49592516,
+            "opt_speed_mps": 0.4424789,
+            "opt_velocity_delta_mps": 0.076404616,
+            "accepted_velocity_delta_mps": 0,
+            "pred_gyro_bias_norm": 0.00128974,
+            "opt_gyro_bias_norm": 0.00128974,
+            "opt_gyro_bias_delta": 0,
+            "pred_accel_bias_norm": 0.022071205,
+            "opt_accel_bias_norm": 0.022071205,
+            "opt_accel_bias_delta": 0,
+            "log_line": 4999
+          },
+          "recovery_attempts": 100,
+          "recovery_successes": 0,
+          "recovery_hypotheses": 0,
+          "recovery_nonzero_bow_attempts": 0,
+          "relatch_attempts": 100,
+          "relatch_successes": 0
+        },
+        {
+          "range_native_s": [
+            1077.54,
+            1082.56
+          ],
+          "lm_rows": 100,
+          "lm_successes": 0,
+          "first_lm": {
+            "frame": 18504,
+            "time": 1077.5492949,
+            "map": 1,
+            "state": 2,
+            "imu_initialized": 1,
+            "ba2": 1,
+            "success": 0,
+            "inliers": 14,
+            "local_points": 3896,
+            "local_keyframes": 53,
+            "already_seen": 15,
+            "bad": 0,
+            "frustum_checked": 3881,
+            "frustum_rejected": 3482,
+            "to_match": 399,
+            "cams": [
+              {
+                "detected": 1435,
+                "incoming": 7,
+                "visible": 234,
+                "before_opt": 10,
+                "after_opt": 7,
+                "outliers": 3
+              },
+              {
+                "detected": 566,
+                "incoming": 8,
+                "visible": 225,
+                "before_opt": 12,
+                "after_opt": 7,
+                "outliers": 5
+              }
+            ],
+            "projection": {
+              "not_visible": 3497,
+              "far": 0,
+              "bad": 0,
+              "th": 2,
+              "ratio": 0.8,
+              "cams": [
+                {
+                  "visible": 234,
+                  "empty": 148,
+                  "candidates": 217,
+                  "occupied": 18,
+                  "stereo_error": 0,
+                  "occupied_only": 5,
+                  "geometry_only": 0,
+                  "descriptor": 69,
+                  "ratio": 9,
+                  "accepted": 3,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                },
+                {
+                  "visible": 225,
+                  "empty": 35,
+                  "candidates": 1502,
+                  "occupied": 31,
+                  "stereo_error": 0,
+                  "occupied_only": 3,
+                  "geometry_only": 0,
+                  "descriptor": 143,
+                  "ratio": 40,
+                  "accepted": 4,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                }
+              ],
+              "returned_matches": 7
+            },
+            "optimizer": "last_frame",
+            "map_updated": 0,
+            "coasting": 0,
+            "coast_armed": 1,
+            "coast_restore": 0,
+            "prior_exists": 0,
+            "opt_camera_displacement_m": 3.411969e-05,
+            "opt_rotation_rad": 6.183784e-05,
+            "pred_speed_mps": 0.37434766,
+            "opt_speed_mps": 0.37431964,
+            "opt_velocity_delta_mps": 5.8973343e-05,
+            "accepted_velocity_delta_mps": 0,
+            "pred_gyro_bias_norm": 0.0022899099,
+            "opt_gyro_bias_norm": 0.0022903995,
+            "opt_gyro_bias_delta": 5.1029912e-07,
+            "pred_accel_bias_norm": 0.023268517,
+            "opt_accel_bias_norm": 0.02326908,
+            "opt_accel_bias_delta": 1.1795645e-06,
+            "log_line": 74707
+          },
+          "last_lm": {
+            "frame": 18603,
+            "time": 1082.49929492,
+            "map": 1,
+            "state": 3,
+            "imu_initialized": 1,
+            "ba2": 1,
+            "success": 0,
+            "inliers": 0,
+            "local_points": 2009,
+            "local_keyframes": 20,
+            "already_seen": 0,
+            "bad": 0,
+            "frustum_checked": 2009,
+            "frustum_rejected": 1918,
+            "to_match": 91,
+            "cams": [
+              {
+                "detected": 1325,
+                "incoming": 0,
+                "visible": 12,
+                "before_opt": 0,
+                "after_opt": 0,
+                "outliers": 0
+              },
+              {
+                "detected": 1472,
+                "incoming": 0,
+                "visible": 80,
+                "before_opt": 2,
+                "after_opt": 0,
+                "outliers": 2
+              }
+            ],
+            "projection": {
+              "not_visible": 1918,
+              "far": 0,
+              "bad": 0,
+              "th": 15,
+              "ratio": 0.8,
+              "cams": [
+                {
+                  "visible": 12,
+                  "empty": 0,
+                  "candidates": 1800,
+                  "occupied": 0,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 2,
+                  "ratio": 10,
+                  "accepted": 0,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                },
+                {
+                  "visible": 80,
+                  "empty": 0,
+                  "candidates": 7899,
+                  "occupied": 15,
+                  "stereo_error": 0,
+                  "occupied_only": 0,
+                  "geometry_only": 0,
+                  "descriptor": 23,
+                  "ratio": 55,
+                  "accepted": 2,
+                  "invalid_level": 0,
+                  "companion_written": 0,
+                  "companion_conflict": 0
+                }
+              ],
+              "returned_matches": 2
+            },
+            "optimizer": "last_keyframe",
+            "map_updated": 0,
+            "coasting": 1,
+            "coast_armed": 1,
+            "coast_restore": 0,
+            "prior_exists": 0,
+            "opt_camera_displacement_m": 0.13138117,
+            "opt_rotation_rad": 0.0021790061,
+            "pred_speed_mps": 0.50038773,
+            "opt_speed_mps": 0.5142197,
+            "opt_velocity_delta_mps": 0.062829427,
+            "accepted_velocity_delta_mps": 0,
+            "pred_gyro_bias_norm": 0.0017574329,
+            "opt_gyro_bias_norm": 0.0017574329,
+            "opt_gyro_bias_delta": 0,
+            "pred_accel_bias_norm": 0.040587168,
+            "opt_accel_bias_norm": 0.040587168,
+            "opt_accel_bias_delta": 0,
+            "log_line": 75323
+          },
+          "recovery_attempts": 100,
+          "recovery_successes": 0,
+          "recovery_hypotheses": 0,
+          "recovery_nonzero_bow_attempts": 0,
+          "relatch_attempts": 100,
+          "relatch_successes": 0
+        }
+      ],
+      "events": [
+        {
+          "log_line": 61,
+          "text": "Creation of new map with id: 0"
+        },
+        {
+          "log_line": 2152,
+          "text": "[CALIBRATION-COMMIT] t=179.149313911 map=0 cam=0 params=242.442703,242.442703,323.423645,242.529358,-0.0242727846,0.0967511013,-0.0635212734,0.00610330561,0.00346611347,-0.000735102803,0.000916796504,0.00106309692,-0.00118584174,-1.77550883e-05,-0.000896445592,-0.000724308484"
+        },
+        {
+          "log_line": 2153,
+          "text": "[CALIBRATION-COMMIT] t=179.149313911 map=0 cam=1 params=241.80011,241.80011,321.758575,241.200821,-0.0217499435,0.095359385,-0.0642583743,0.00619264226,0.00374338916,-0.000797781919,0.00200605695,-0.000422073208,-0.0027143294,0.000256854924,0.00124510494,-0.000377767225"
+        },
+        {
+          "log_line": 2154,
+          "text": "[CALIBRATION-TRIAL] t=179.149313911 accepted=1 initial_cost=9899.15811 fixed_cost=9276.29598 final_cost=7258.40269 keyframes=39 points=3288"
+        },
+        {
+          "log_line": 4399,
+          "text": "[Debug] COAST: engaged, anchor KF 184 (12 inliers this frame)"
+        },
+        {
+          "log_line": 5006,
+          "text": "[Debug] COAST: abandoned (grace expired), stock LOST handling"
+        },
+        {
+          "log_line": 5007,
+          "text": "Creation of new map with id: 1"
+        },
+        {
+          "log_line": 20432,
+          "text": "[Debug] COAST: engaged, anchor KF 675 (12 inliers this frame)"
+        },
+        {
+          "log_line": 20916,
+          "text": "[Debug] COAST: exit, vision confirmed (12 inliers)"
+        },
+        {
+          "log_line": 28233,
+          "text": "[Debug] COAST: engaged, anchor KF 903 (14 inliers this frame)"
+        },
+        {
+          "log_line": 28244,
+          "text": "[Debug] COAST: exit, vision confirmed (16 inliers)"
+        },
+        {
+          "log_line": 74709,
+          "text": "[Debug] COAST: engaged, anchor KF 2297 (14 inliers this frame)"
+        },
+        {
+          "log_line": 75330,
+          "text": "[Debug] COAST: abandoned (grace expired), stock LOST handling"
+        },
+        {
+          "log_line": 75331,
+          "text": "Creation of new map with id: 2"
+        },
+        {
+          "log_line": 111056,
+          "text": "[Debug] COAST: engaged, anchor KF 3356 (11 inliers this frame)"
+        },
+        {
+          "log_line": 111063,
+          "text": "[Debug] COAST: exit, vision confirmed (15 inliers)"
+        },
+        {
+          "log_line": 111069,
+          "text": "[Debug] COAST: engaged, anchor KF 3356 (14 inliers this frame)"
+        },
+        {
+          "log_line": 111077,
+          "text": "[Debug] COAST: exit, vision confirmed (12 inliers)"
+        },
+        {
+          "log_line": 116324,
+          "text": "[Debug] COAST: engaged, anchor KF 3537 (11 inliers this frame)"
+        },
+        {
+          "log_line": 116340,
+          "text": "[Debug] COAST: exit, vision confirmed (15 inliers)"
+        },
+        {
+          "log_line": 116475,
+          "text": "[Debug] COAST: engaged, anchor KF 3542 (14 inliers this frame)"
+        },
+        {
+          "log_line": 116952,
+          "text": "[Debug] COAST: abandoned (grace expired), stock LOST handling"
+        },
+        {
+          "log_line": 116953,
+          "text": "Creation of new map with id: 3"
+        },
+        {
+          "log_line": 123558,
+          "text": "[Debug] COAST: engaged, anchor KF 3761 (14 inliers this frame)"
+        },
+        {
+          "log_line": 124118,
+          "text": "[Debug] COAST: abandoned (grace expired), stock LOST handling"
+        },
+        {
+          "log_line": 124119,
+          "text": "Creation of new map with id: 4"
+        },
+        {
+          "log_line": 130613,
+          "text": "[Debug] COAST: engaged, anchor KF 3973 (14 inliers this frame)"
+        },
+        {
+          "log_line": 130619,
+          "text": "[Debug] COAST: exit, vision confirmed (14 inliers)"
+        },
+        {
+          "log_line": 130786,
+          "text": "[Debug] COAST: engaged, anchor KF 3978 (14 inliers this frame)"
+        },
+        {
+          "log_line": 130911,
+          "text": "[Debug] COAST: exit, vision confirmed (11 inliers)"
+        }
+      ]
+    }
+  },
+  "recovery_interpretation": {
+    "diagnostic_caveat": "bow_cam0/1 count updates only after candidate total >=15, so zero logs mean below that gate, not necessarily zero raw matches.",
+    "two_lenses": "Separate >=10-match per-camera MLPnP hypotheses; cam1 converted with Tlr; subsequent rig pose optimizer verifies both cameras; not a generalized multi-camera ray solver.",
+    "descriptor_path": "Binarized ALIKED descriptors feed stock ORB vocabulary; SearchByBoW restricts comparisons to shared vocabulary nodes. Domain mismatch is a source-backed suspect, not controlled proof.",
+    "minimal_candidate": "Bypass ORB vocabulary partition for recovery matching using native ALIKED float descriptors for current/pre-dropout keyframes; retain geometric verification and acceptance thresholds, full rollback, and frozen80.20 baseline."
+  },
+  "loop_closure": {
+    "enabled": true,
+    "thread_start_logged_both": true,
+    "accepted_loop_markers_both": 0,
+    "accepted_merge_markers_both": 0,
+    "candidate_counts": "Not logged; cannot infer zero retrieval candidates.",
+    "source": "LoopClosing.cc346 waits for inertial BA2;496 retrieves top3 ORB-BoW candidates;177/197/234 print accepted merge/loop markers absent from both logs."
+  },
+  "calibration_guard": {
+    "source": "LocalMapping.cc303-318;FullCalibrationOptimizerImpl.h124,132",
+    "finding": "More than one populated map disables the entire periodic FullCalibrationBA, including full-map VI refinement, not only intrinsics. Ordinary local BA continues. Shared camera objects require this guard for present single-map graph.",
+    "proposal": "Split fixed-intrinsic periodic full VI refinement from calibration commits. Keep shared intrinsics frozen across independent maps until safe all-map atomic calibration or per-map versioning exists; do not simply remove guard."
+  },
+  "causality_limits": [
+    "Tracking.cc source hashes match both saved build manifests.",
+    "All446 Medium and508 Long logged inertial rejections retain zero optimizer velocity update and null current prior.",
+    "No successful relatches in either run, therefore known v2 post-relatch snapshot defect is not demonstrated cause of these breaks.",
+    "Medium nearby763.387 calibration trial rejected; private graph returns before live commit. Last accepted388.137. Long only accepted179.149.",
+    "Full video/atlas pose coverage is distinct from one connected map. Scores select largest independent map; no GT stitching."
+  ]
+}

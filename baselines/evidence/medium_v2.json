@@ -1,0 +1,475 @@
+{
+  "sequence": "sequence_2_11",
+  "method": "online_full_v2 nativecalibration transfer unchanged binary",
+  "score": {
+    "sequence": "sequence_2_11",
+    "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full",
+    "evaluation": "LaMAria official functions, local evaluation only",
+    "Score2D": 62.76479920913107,
+    "CPRecall@1m_percent": 72.22222222222221,
+    "PoseRecall@5m_percent": 61.20499632623071,
+    "PoseRecall@1m_percent": 60.641685035513106,
+    "CP_total": 18,
+    "CP_triangulated": 13,
+    "CP_within_1m": 13,
+    "GT_total_denominator": 4083,
+    "GT_associated": 2499,
+    "GT_unmatched_count": 1584,
+    "GT_unmatched_before_first_estimate": 4,
+    "GT_unmatched_after_last_estimate": 1580,
+    "pose_count_within_5m": 2499,
+    "pose_count_within_1m": 2476,
+    "estimated_poses": 14131,
+    "native_input_frames": 23748,
+    "processed_input_frames": 23746,
+    "unsupported_boundary_frames": 2,
+    "unsupported_boundary_prefix_frames": 0,
+    "unsupported_boundary_suffix_frames": 2,
+    "missing_native_input_poses": 9617,
+    "missing_processed_input_poses": 9615,
+    "pose_coverage_fraction": 0.5950395822806132,
+    "processed_pose_coverage_fraction": 0.5950896993177799,
+    "pose_to_input_max_difference_ns": 0,
+    "map_epochs": 1,
+    "source_timestamp_scope": "full source recording supplied",
+    "trajectory_selection": {
+      "policy": "largest",
+      "selected_coordinate_frame": "map_0_init_0_body0",
+      "selected_map_id": "0",
+      "selected_map_init_kf_id": "0",
+      "selected_pose_count": 14131,
+      "atlas_pose_count": 22888,
+      "atlas_map_epochs": 3,
+      "omitted_other_map_poses": 8757,
+      "available_maps": [
+        {
+          "coordinate_frame": "map_0_init_0_body0",
+          "poses": 14131
+        },
+        {
+          "coordinate_frame": "map_1_init_2008_body0",
+          "poses": 8558
+        },
+        {
+          "coordinate_frame": "map_2_init_2999_body0",
+          "poses": 199
+        }
+      ],
+      "uses_ground_truth_for_selection": false
+    },
+    "pGT_association_max_difference_ns": 0,
+    "associated_horizontal_error_m": {
+      "median": 0.21963679002589157,
+      "rmse": 0.33814589111825427,
+      "p90": 0.4952717924530926,
+      "maximum": 1.653868608124505
+    },
+    "CP_sim3": {
+      "scale": 1.010361082924721,
+      "rotation_xyzw": [
+        0.06858126546039155,
+        0.6269650391647569,
+        -0.049856282631395896,
+        0.7744196541767033
+      ],
+      "translation": [
+        -329.0799958500401,
+        -198.03015877547008,
+        7.869085615693119
+      ]
+    },
+    "protocol_notes": [
+      "Horizontal XY errors, not 3D ATE.",
+      "One CP-derived Sim3; no separate dense-GT fit.",
+      "Missing GT timestamps count as failures in the full PoseRecall denominator; they do not directly change Score2D.",
+      "Score2D averages the official piecewise control-point error score; missing control points contribute zero.",
+      "Missing input poses remain absent; no gap filling or independent-map stitching.",
+      "Local per-sequence score, not a leaderboard submission."
+    ]
+  },
+  "coverage": {
+    "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full",
+    "input_frames": 23746,
+    "input_start_s": 68.43737483700001,
+    "input_end_s": 1255.6873938370002,
+    "input_span_s": 1187.250019,
+    "completed_active_map_resets": 4,
+    "new_map_events": 3,
+    "retained_map_keyframes": [
+      {
+        "map_id": 0,
+        "keyframes": 874
+      },
+      {
+        "map_id": 1,
+        "keyframes": 672
+      },
+      {
+        "map_id": 2,
+        "keyframes": 40
+      }
+    ],
+    "estimator_returncode": 0,
+    "export_returncode": null,
+    "pose_export_scope": "All surviving atlas maps, each in its own explicitly named frame",
+    "segments": [
+      {
+        "coordinate_frame": "map_0_init_0_body0",
+        "map_id": 0,
+        "map_init_kf_id": 0,
+        "exported_rows": 14131,
+        "unique_input_frames": 14131,
+        "contiguous_spans": [
+          {
+            "frames": 14131,
+            "start_s": 71.13737483700001,
+            "end_s": 777.637374787,
+            "duration_s": 706.49999995
+          }
+        ],
+        "global_anchor_available": false
+      },
+      {
+        "coordinate_frame": "map_1_init_2008_body0",
+        "map_id": 1,
+        "map_init_kf_id": 2008,
+        "exported_rows": 8558,
+        "unique_input_frames": 8558,
+        "contiguous_spans": [
+          {
+            "frames": 8558,
+            "start_s": 799.587393837,
+            "end_s": 1227.4373938370002,
+            "duration_s": 427.85000000000014
+          }
+        ],
+        "global_anchor_available": false
+      },
+      {
+        "coordinate_frame": "map_2_init_2999_body0",
+        "map_id": 2,
+        "map_init_kf_id": 2999,
+        "exported_rows": 199,
+        "unique_input_frames": 199,
+        "contiguous_spans": [
+          {
+            "frames": 199,
+            "start_s": 1245.787393837,
+            "end_s": 1255.6873938370002,
+            "duration_s": 9.900000000000091
+          }
+        ],
+        "global_anchor_available": false
+      }
+    ],
+    "independent_segments_exported": 3,
+    "unique_input_frames_with_exported_pose": 22888,
+    "exported_pose_fraction": 0.9638675987534743,
+    "longest_independently_framed_contiguous_segment": {
+      "frames": 14131,
+      "start_s": 71.13737483700001,
+      "end_s": 777.637374787,
+      "duration_s": 706.49999995
+    },
+    "online_pose_rows": 23746,
+    "online_pose_rows_cover_every_input": true,
+    "online_quality_source": "Explicit per-input pose/state trace, including initialization and early returns",
+    "logged_native_frames": 23746,
+    "unlogged_native_frames": 0,
+    "logged_visual_ok_frames": 22643,
+    "logged_visual_ok_fraction": 0.9535500715910048,
+    "logged_coasted_frames": 450,
+    "logged_visual_ok_without_final_export": 201,
+    "exported_pose_with_logged_visual_ok": 22442,
+    "exported_pose_with_logged_coasting": 446,
+    "online_map_epochs": [
+      {
+        "map_id": 0,
+        "map_init_kf_id": 0,
+        "pose_frames": 14131,
+        "contiguous_spans": [
+          {
+            "frames": 14131,
+            "start_s": 71.13737483700001,
+            "end_s": 777.637374787,
+            "duration_s": 706.49999995
+          }
+        ]
+      },
+      {
+        "map_id": 1,
+        "map_init_kf_id": 1973,
+        "pose_frames": 116,
+        "contiguous_spans": [
+          {
+            "frames": 116,
+            "start_s": 778.137374837,
+            "end_s": 783.887374787,
+            "duration_s": 5.74999994999996
+          }
+        ]
+      },
+      {
+        "map_id": 1,
+        "map_init_kf_id": 1996,
+        "pose_frames": 37,
+        "contiguous_spans": [
+          {
+            "frames": 37,
+            "start_s": 784.487393837,
+            "end_s": 786.287374837,
+            "duration_s": 1.7999810000000025
+          }
+        ]
+      },
+      {
+        "map_id": 1,
+        "map_init_kf_id": 2004,
+        "pose_frames": 15,
+        "contiguous_spans": [
+          {
+            "frames": 15,
+            "start_s": 793.5373747870001,
+            "end_s": 794.237393837,
+            "duration_s": 0.7000190499999235
+          }
+        ]
+      },
+      {
+        "map_id": 1,
+        "map_init_kf_id": 2008,
+        "pose_frames": 8558,
+        "contiguous_spans": [
+          {
+            "frames": 8558,
+            "start_s": 799.587393837,
+            "end_s": 1227.4373938370002,
+            "duration_s": 427.85000000000014
+          }
+        ]
+      },
+      {
+        "map_id": 2,
+        "map_init_kf_id": 2990,
+        "pose_frames": 37,
+        "contiguous_spans": [
+          {
+            "frames": 37,
+            "start_s": 1237.5873558370001,
+            "end_s": 1239.387393837,
+            "duration_s": 1.8000379999998586
+          }
+        ]
+      },
+      {
+        "map_id": 2,
+        "map_init_kf_id": 2999,
+        "pose_frames": 199,
+        "contiguous_spans": [
+          {
+            "frames": 199,
+            "start_s": 1245.787393837,
+            "end_s": 1255.6873938370002,
+            "duration_s": 9.900000000000091
+          }
+        ]
+      }
+    ],
+    "final_history_status_counts": {
+      "exported": 22888,
+      "cleared_or_unretained_map": 144,
+      "marked_lost": 61
+    },
+    "interpretation": [
+      "A retained final pose can include IMU-only coasting; pose coverage is not visual success.",
+      "Independent-map pose coverage is not a continuous global trajectory. No transform between independent maps is invented.",
+      "Visual OK without final export can mean either largest-only suppression or a later cleared map; legacy outputs cannot disambiguate.",
+      "Online snapshots preserve estimates before reset, but do not retrospectively follow optimization and may change gauge at world_version updates."
+    ]
+  },
+  "calibration": {
+    "completed_trials": 12,
+    "accepted_updates": 4,
+    "trials": [
+      "[CALIBRATION-TRIAL] t=86.537374837 accepted=1 initial_cost=17254.3923 fixed_cost=16329.5102 final_cost=15077.716 keyframes=38 points=4261",
+      "[CALIBRATION-TRIAL] t=146.787374837 accepted=1 initial_cost=30096.4423 fixed_cost=26710.9145 final_cost=26585.5658 keyframes=65 points=7604",
+      "[CALIBRATION-TRIAL] t=207.287393837 accepted=0 reason=no_heldout_improvement ",
+      "[CALIBRATION-TRIAL] t=267.537374837 accepted=1 initial_cost=66528.2256 fixed_cost=54512.1392 final_cost=53803.6465 keyframes=265 points=15679",
+      "[CALIBRATION-TRIAL] t=327.787374837 accepted=0 reason=no_heldout_improvement ",
+      "[CALIBRATION-TRIAL] t=388.137374837 accepted=1 initial_cost=93440.4896 fixed_cost=85818.5256 final_cost=85774.9646 keyframes=362 points=25262",
+      "[CALIBRATION-TRIAL] t=448.737393837 accepted=0 reason=objective no_heldout_improvement parameter_bound_cam0 ",
+      "[CALIBRATION-TRIAL] t=510.287374837 accepted=0 reason=no_heldout_improvement ",
+      "[CALIBRATION-TRIAL] t=570.387374837 accepted=0 reason=objective heldout_cam0_bin1 no_heldout_improvement parameter_bound_cam0 ",
+      "[CALIBRATION-TRIAL] t=630.487393837 accepted=0 reason=objective no_heldout_improvement parameter_bound_cam0 ",
+      "[CALIBRATION-TRIAL] t=702.737393837 accepted=0 reason=objective no_heldout_improvement parameter_bound_cam0 ",
+      "[CALIBRATION-TRIAL] t=763.387374837 accepted=0 reason=objective no_heldout_improvement parameter_bound_cam0 "
+    ]
+  },
+  "estimator_wall_seconds": 746.750758,
+  "metric_diagnostic": {
+    "scope": "Identical largestmap GT associations from saved officialscore; fits useGT only offline; no corrected trajectory submitted",
+    "association_audit": {
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full",
+      "sequence": "sequence_2_11",
+      "coordinate_frame": "map_0_init_0_body0",
+      "atlas_maps": {
+        "map_0_init_0_body0": 14131,
+        "map_1_init_2008_body0": 8558,
+        "map_2_init_2999_body0": 199
+      },
+      "primary_poses": 14131,
+      "gt_associations": 2499,
+      "max_timestamp_difference_ns": 0,
+      "calibration_max_abs_difference": 1.207965694138835e-08,
+      "sensor_conversion": "world_from_cam0 = world_from_imu_right * imu_right_from_cam0; xyzw",
+      "first_timestamp_s": 71.237393837,
+      "last_timestamp_s": 777.587374787,
+      "visual_ok_associations": 2411,
+      "hashes": {
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/atlas_lamaria_online_full_v2_medium_full_20261003_medium_full_trajectory.csv": "8ce61f1967e68aabbadf6f1fb6e315d73bd84a6b7928f424437b55aaf36fb50d",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/online_lamaria_online_full_v2_medium_full_20261003_medium_full.csv": "7e7cd8129957af291d8c3eeff5c0c755da0f483ed06560b6a18c7b8a96e75eae",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/config/settings.yaml": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931",
+        "/media/raghav/HardDrive1/Mecka/lamaria/sequence_2_11/gt_dense.txt": "733c11510bdc7e0913d6e7acbff6c6ee4b6c1ef62061a8aa4d081eb113d92c89",
+        "/media/raghav/HardDrive1/Mecka/lamaria/sequence_2_11/aria_calib.json": "a78a9b73f9283074598d2fb2580dd7247b2199bbd964f71c48fcd7c993ec760d"
+      }
+    },
+    "se3_3d": {
+      "scale_estimate_to_gt": 1.0,
+      "estimate_stretch": 1.0,
+      "rmse_m": 0.7585922586499868,
+      "median_m": 0.6777155716883495,
+      "p90_m": 0.99926807703552,
+      "max_m": 2.468854924901664,
+      "rotation": [
+        [
+          0.22250635384178616,
+          0.16286461790006646,
+          0.961231521921904
+        ],
+        [
+          0.001559629519206404,
+          0.9858872922081193,
+          -0.167403149965303
+        ],
+        [
+          -0.9749299923870423,
+          0.038747429576790324,
+          0.21911217822246914
+        ]
+      ],
+      "translation": [
+        -328.7604159184853,
+        -198.94963478179,
+        6.376167737601635
+      ]
+    },
+    "sim3_3d": {
+      "scale_estimate_to_gt": 1.009803527684999,
+      "estimate_stretch": 0.990291648408603,
+      "rmse_m": 0.4035884560286104,
+      "median_m": 0.26190712590969095,
+      "p90_m": 0.6804586337686834,
+      "max_m": 2.3346817068373835,
+      "rotation": [
+        [
+          0.22250635384178616,
+          0.16286461790006646,
+          0.961231521921904
+        ],
+        [
+          0.001559629519206404,
+          0.9858872922081193,
+          -0.167403149965303
+        ],
+        [
+          -0.9749299923870423,
+          0.038747429576790324,
+          0.21911217822246914
+        ]
+      ],
+      "translation": [
+        -329.23122953458477,
+        -197.9525841287084,
+        6.487666749489718
+      ]
+    }
+  },
+  "warning": "Full inputsequence processed, but3independent atlasmaps remain. Officialevaluation andalignedRerun selectlargestmap only. Missing5controlpoints contributezero, othermapposes are notstitched.",
+  "visualization": {
+    "stage": "complete",
+    "updated_utc": "2026-10-03T09:45:22.064973+00:00",
+    "score": 62.76479920913107,
+    "rrd": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/online_full_evaluation.rrd",
+    "render_seconds": 450.86657182499766,
+    "audit_seconds": 4.30474311998114,
+    "diagnostic_seconds": 1.044277938985033,
+    "metadata": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/evaluation/output_metadata.json",
+    "audit": {
+      "passed": true,
+      "official_score": 62.76479920913107,
+      "saved_sim3_scale": 1.010361082924721,
+      "geometry_selection": {
+        "selected_coordinate_frame": "map_0_init_0_body0",
+        "selected_map_id": "0",
+        "selected_map_init_kf_id": "0",
+        "atlas_map_epochs": 3,
+        "selected_pose_count": 14131,
+        "omitted_other_map_poses": 8757,
+        "landmark_source": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/atlas_lamaria_online_full_v2_medium_full_20261003_medium_full_points.csv",
+        "selected_landmarks": 46558,
+        "pose_source": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/atlas_lamaria_online_full_v2_medium_full_20261003_medium_full_trajectory.csv",
+        "map_reveal_timing": {
+          "source": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/ml_lamaria_online_full_v2_medium_full_20261003_medium_full_kfpts.csv",
+          "points_with_observation": 46558,
+          "points_without_observation": 0,
+          "points_revealed_earlier": 26959,
+          "maximum_reveal_advance_s": 82.20000000000005,
+          "method": "Earliest surviving keyframe observation; current-reference fallback for missing observations"
+        },
+        "cross_map_alignment_performed": false,
+        "missing_interval_policy": "Only the scored map has 3D geometry. Other maps are omitted; both native camera streams continue."
+      },
+      "trajectory_csv_max_difference_m": 4.99995600478087e-10,
+      "points_csv_max_difference_m": 4.999947122996673e-10,
+      "pgt_horizontal_errors_checked": 2499,
+      "pgt_horizontal_error_max_difference_m": 6.750155989720952e-13,
+      "rrd_camera_rows": [
+        14131,
+        14131
+      ],
+      "rrd_camera_position_max_difference_m": [
+        1.5258010023444513e-05,
+        1.5257433517490426e-05
+      ],
+      "rrd_camera_rotation_max_difference": [
+        2.9802137979650922e-08,
+        2.9801662138062568e-08
+      ],
+      "rrd_image_rows": [
+        23746,
+        23746
+      ],
+      "rrd_map_points_checked": 46550,
+      "rrd_map_max_difference_m": 2.9239946229608904e-05,
+      "map_display_filter_audit": {
+        "source_landmarks": 46558,
+        "nonfinite_points_omitted": 0,
+        "distant_points_omitted": 8,
+        "eligible_points": 46550,
+        "downsampling": false,
+        "point_count_cap": null,
+        "eligible_points_outside_recording_interval": 0,
+        "expected_recorded_points": 46550
+      },
+      "rrd_selected_landmark_ids_checked": 46550,
+      "rrd_trajectory_chunks_checked_for_gaps": 14131,
+      "rrd_trajectory_geometry_max_difference_m": 1.5258010023444513e-05,
+      "rrd_frustum_size_max_difference_m": 3.408465176768516e-08,
+      "missing_images": 0,
+      "note": "All recorded camera transforms, map positions, image rows and saved scorer errors checked; float32 RRD storage tolerance only."
+    },
+    "rrd_bytes": 2983623013,
+    "top_view": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/evaluation/viz/path_topdown.png",
+    "calibration_report": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/diagnostics/report.html"
+  }
+}

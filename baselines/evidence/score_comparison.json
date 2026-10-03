@@ -1,0 +1,319 @@
+{
+  "same_binary_library_image": true,
+  "runs": [
+    {
+      "label": "Short",
+      "sequence": "sequence_1_19",
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full",
+      "official_score": 80.19916100650815,
+      "lost_score_missing_cp": 0.0,
+      "lost_score_recovered_cp_residual": 19.80083899349186,
+      "recovered_cp_only_conditional_score_DIAGNOSTIC": 80.19916100650815,
+      "current_cp_coverage_score_ceiling": 100.0,
+      "CP_total": 14,
+      "CP_recovered": 14,
+      "recovered_cp_median_error_cm": 39.335298269928145,
+      "recovered_cp_max_error_cm": 80.34072638823697,
+      "dense_GT_associated": 2999,
+      "dense_GT_total": 2999,
+      "PoseRecall@5m_percent": 100.0,
+      "PoseRecall@1m_percent": 99.76658886295432,
+      "associated_horizontal_error_m": {
+        "median": 0.401452970507069,
+        "rmse": 0.4635208150126818,
+        "p90": 0.6408363334732453,
+        "maximum": 2.8731924466312213
+      },
+      "selected_pose_count": 18343,
+      "native_input_frames": 18352,
+      "selected_pose_fraction_native": 0.9995095902353966,
+      "selected_coordinate_frame": "map_0_init_2_body0",
+      "atlas_map_count": 1,
+      "atlas_pose_count": 18343,
+      "atlas_pose_fraction_native": 0.9995095902353966,
+      "omitted_other_map_poses": 0,
+      "input_start_s": 64.442200762,
+      "input_end_s": 981.9422007620001,
+      "input_span_s": 917.5000000000001,
+      "segments": [
+        {
+          "coordinate_frame": "map_0_init_2_body0",
+          "map_id": 0,
+          "map_init_kf_id": 2,
+          "exported_rows": 18343,
+          "unique_input_frames": 18343,
+          "contiguous_spans": [
+            {
+              "frames": 18343,
+              "start_s": 64.842200762,
+              "end_s": 981.9422007620001,
+              "duration_s": 917.1000000000001
+            }
+          ],
+          "global_anchor_available": false
+        }
+      ],
+      "completed_active_map_resets": 1,
+      "estimator_returncode": 0,
+      "CP_sim3_scale": 1.019443459627634,
+      "runner_sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66",
+      "library_sha256": "7664755942310a1513cde99aeb47d3c48c4cf17a5412196b970b6315018c3414",
+      "image_id": "sha256:e81cd138e05acfdfccb29585a1d8923f33e04d1ce087a461203130befa3524f1",
+      "source_sha256": {
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full/lamaria_score/scores.json": "7591d6b88b0ab3d30fb21498b0e5a448a5a5d9687dc71b78d713150eca347a7b",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full/lamaria_score/sparse_eval_result.npy": "b329ab6f77c219999bd509f10879ef7dd036a91f6cd95211337bd254a7acd271",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full/lamaria_score/control_point_errors.json": "f8fdf19eb940f18ebdee414cfce9b0ffb549db4c580e5749266abb16bd20036d",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full/lamaria_score/provenance.json": "b4cc2596ca2f7c155c028fca37f963a4eaf3fd6f9c7816ac05f7298e361be653",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full/coverage.json": "0718def05020209c182178b9a66e939771de628dc3db43c7739479becc501f43",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full/result.json": "d5de68d45950645d6c0630ebece1bedc2ffd51efab3c8aac6eb070c7d020e33c",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full/config/build_manifest.json": "5e3b8fffb60bf91a58a46b62ee09dd2fa23d158d4806bba6a3f33124a0fabc7d",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/runs/lamaria_online_full_v2_short_full_20261003_short_full/config/settings.yaml": "b75b3c555e06646bafe4a00fedcfed4ec19a958678a9a8f248db8b7b6f0f2757"
+      }
+    },
+    {
+      "label": "Medium",
+      "sequence": "sequence_2_11",
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full",
+      "official_score": 62.76479920913107,
+      "lost_score_missing_cp": 27.77777777777778,
+      "lost_score_recovered_cp_residual": 9.457423013091148,
+      "recovered_cp_only_conditional_score_DIAGNOSTIC": 86.90510659725844,
+      "current_cp_coverage_score_ceiling": 72.22222222222221,
+      "CP_total": 18,
+      "CP_recovered": 13,
+      "recovered_cp_median_error_cm": 28.54603385554679,
+      "recovered_cp_max_error_cm": 51.82467141122795,
+      "dense_GT_associated": 2499,
+      "dense_GT_total": 4083,
+      "PoseRecall@5m_percent": 61.20499632623071,
+      "PoseRecall@1m_percent": 60.641685035513106,
+      "associated_horizontal_error_m": {
+        "median": 0.21963679002589157,
+        "rmse": 0.33814589111825427,
+        "p90": 0.4952717924530926,
+        "maximum": 1.653868608124505
+      },
+      "selected_pose_count": 14131,
+      "native_input_frames": 23748,
+      "selected_pose_fraction_native": 0.5950395822806132,
+      "selected_coordinate_frame": "map_0_init_0_body0",
+      "atlas_map_count": 3,
+      "atlas_pose_count": 22888,
+      "atlas_pose_fraction_native": 0.9637864241199259,
+      "omitted_other_map_poses": 8757,
+      "input_start_s": 68.43737483700001,
+      "input_end_s": 1255.6873938370002,
+      "input_span_s": 1187.250019,
+      "segments": [
+        {
+          "coordinate_frame": "map_0_init_0_body0",
+          "map_id": 0,
+          "map_init_kf_id": 0,
+          "exported_rows": 14131,
+          "unique_input_frames": 14131,
+          "contiguous_spans": [
+            {
+              "frames": 14131,
+              "start_s": 71.13737483700001,
+              "end_s": 777.637374787,
+              "duration_s": 706.49999995
+            }
+          ],
+          "global_anchor_available": false
+        },
+        {
+          "coordinate_frame": "map_1_init_2008_body0",
+          "map_id": 1,
+          "map_init_kf_id": 2008,
+          "exported_rows": 8558,
+          "unique_input_frames": 8558,
+          "contiguous_spans": [
+            {
+              "frames": 8558,
+              "start_s": 799.587393837,
+              "end_s": 1227.4373938370002,
+              "duration_s": 427.85000000000014
+            }
+          ],
+          "global_anchor_available": false
+        },
+        {
+          "coordinate_frame": "map_2_init_2999_body0",
+          "map_id": 2,
+          "map_init_kf_id": 2999,
+          "exported_rows": 199,
+          "unique_input_frames": 199,
+          "contiguous_spans": [
+            {
+              "frames": 199,
+              "start_s": 1245.787393837,
+              "end_s": 1255.6873938370002,
+              "duration_s": 9.900000000000091
+            }
+          ],
+          "global_anchor_available": false
+        }
+      ],
+      "completed_active_map_resets": 4,
+      "estimator_returncode": 0,
+      "CP_sim3_scale": 1.010361082924721,
+      "runner_sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66",
+      "library_sha256": "7664755942310a1513cde99aeb47d3c48c4cf17a5412196b970b6315018c3414",
+      "image_id": "sha256:e81cd138e05acfdfccb29585a1d8923f33e04d1ce087a461203130befa3524f1",
+      "source_sha256": {
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/lamaria_score/scores.json": "ae16a812a83b55a1de654bc0f3ce5a07c35177af3e4fcdaff538f586371f02c7",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/lamaria_score/sparse_eval_result.npy": "1dcbfa3a3729990a619495d56dbceeb6fb17dcce4716aa212b268b05c68ea7bb",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/lamaria_score/control_point_errors.json": "76dc5777d0ece10419771aac5a5d3d5ed5a6d000599652a3ecd523b63a664bc8",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/lamaria_score/provenance.json": "2285cb999c3843e0d247aa39735b21ab1293fe3221a511feabbb5b0720302bd7",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/coverage.json": "45c5adfda0c1c1d970390053aa745eb0feea06ac1f7b5af07056c984fceda96d",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/result.json": "8fb1c0df848b7f872da6d60abacdfc9519a987c2f5d5f4bc3710f4a08e8befe6",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/config/build_manifest.json": "5e3b8fffb60bf91a58a46b62ee09dd2fa23d158d4806bba6a3f33124a0fabc7d",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_medium_full_20261003/runs/lamaria_online_full_v2_medium_full_20261003_medium_full/config/settings.yaml": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931"
+      }
+    },
+    {
+      "label": "Long",
+      "sequence": "sequence_3_17",
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full",
+      "official_score": 34.458900755473394,
+      "lost_score_missing_cp": 44.44444444444444,
+      "lost_score_recovered_cp_residual": 21.096654800082156,
+      "recovered_cp_only_conditional_score_DIAGNOSTIC": 62.0260213598521,
+      "current_cp_coverage_score_ceiling": 55.55555555555556,
+      "CP_total": 27,
+      "CP_recovered": 15,
+      "recovered_cp_median_error_cm": 68.8067237854514,
+      "recovered_cp_max_error_cm": 268.2542231626369,
+      "dense_GT_associated": 3163,
+      "dense_GT_total": 6118,
+      "PoseRecall@5m_percent": 51.69990192873488,
+      "PoseRecall@1m_percent": 32.674076495586796,
+      "associated_horizontal_error_m": {
+        "median": 0.7105705708918642,
+        "rmse": 1.3313643362213137,
+        "p90": 1.9608772866200876,
+        "maximum": 4.306656618315839
+      },
+      "selected_pose_count": 17160,
+      "native_input_frames": 35842,
+      "selected_pose_fraction_native": 0.47876792589699235,
+      "selected_coordinate_frame": "map_1_init_203_body0",
+      "atlas_map_count": 5,
+      "atlas_pose_count": 33306,
+      "atlas_pose_fraction_native": 0.9292450198091624,
+      "omitted_other_map_poses": 16146,
+      "input_start_s": 152.349294899,
+      "input_end_s": 1944.3992949110002,
+      "input_span_s": 1792.0500000120003,
+      "segments": [
+        {
+          "coordinate_frame": "map_0_init_29_body0",
+          "map_id": 0,
+          "map_init_kf_id": 29,
+          "exported_rows": 997,
+          "unique_input_frames": 997,
+          "contiguous_spans": [
+            {
+              "frames": 997,
+              "start_s": 163.499313924,
+              "end_s": 213.299294924,
+              "duration_s": 49.799981
+            }
+          ],
+          "global_anchor_available": false
+        },
+        {
+          "coordinate_frame": "map_1_init_203_body0",
+          "map_id": 1,
+          "map_init_kf_id": 203,
+          "exported_rows": 17160,
+          "unique_input_frames": 17160,
+          "contiguous_spans": [
+            {
+              "frames": 17160,
+              "start_s": 224.549313912,
+              "end_s": 1082.499294924,
+              "duration_s": 857.949981012
+            }
+          ],
+          "global_anchor_available": false
+        },
+        {
+          "coordinate_frame": "map_2_init_2298_body0",
+          "map_id": 2,
+          "map_init_kf_id": 2298,
+          "exported_rows": 10586,
+          "unique_input_frames": 10586,
+          "contiguous_spans": [
+            {
+              "frames": 10586,
+              "start_s": 1082.649294925,
+              "end_s": 1611.899294886,
+              "duration_s": 529.249999961
+            }
+          ],
+          "global_anchor_available": false
+        },
+        {
+          "coordinate_frame": "map_3_init_3586_body0",
+          "map_id": 3,
+          "map_init_kf_id": 3586,
+          "exported_rows": 1291,
+          "unique_input_frames": 1291,
+          "contiguous_spans": [
+            {
+              "frames": 1291,
+              "start_s": 1663.2992949240002,
+              "end_s": 1727.7992949240002,
+              "duration_s": 64.5
+            }
+          ],
+          "global_anchor_available": false
+        },
+        {
+          "coordinate_frame": "map_4_init_3837_body0",
+          "map_id": 4,
+          "map_init_kf_id": 3837,
+          "exported_rows": 3272,
+          "unique_input_frames": 3272,
+          "contiguous_spans": [
+            {
+              "frames": 3272,
+              "start_s": 1780.8493139240002,
+              "end_s": 1944.3992949110002,
+              "duration_s": 163.54998098700003
+            }
+          ],
+          "global_anchor_available": false
+        }
+      ],
+      "completed_active_map_resets": 13,
+      "estimator_returncode": 0,
+      "CP_sim3_scale": 0.9949018291135009,
+      "runner_sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66",
+      "library_sha256": "7664755942310a1513cde99aeb47d3c48c4cf17a5412196b970b6315018c3414",
+      "image_id": "sha256:e81cd138e05acfdfccb29585a1d8923f33e04d1ce087a461203130befa3524f1",
+      "source_sha256": {
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/lamaria_score/scores.json": "bb30eb206f342fcddc78e367410f9d8ad95b4df74797fe97127dea34bc220467",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/lamaria_score/sparse_eval_result.npy": "a6ef0e512de22608516bc8b1b4416f9087200c697b8846ae05ff0a5436b35c6a",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/lamaria_score/control_point_errors.json": "b48f11e4f1c683f1b4d1cd312779b446f255e9a757a8880086dbac73acc5db8d",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/lamaria_score/provenance.json": "6419430d98bfd4ce6f8109c07611cba7c045a659c7522493e57bd0ab13d68748",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/coverage.json": "60e4da17e4a8881cae86d83b15a4589840f3c39557886f6ad7c2ae14411c015f",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/result.json": "c1994166db630f75c3318a3cd2804109be3fdafb098ccf550d2fa38e1762f196",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/config/build_manifest.json": "5e3b8fffb60bf91a58a46b62ee09dd2fa23d158d4806bba6a3f33124a0fabc7d",
+        "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_long_native_full_20261003/runs/lamaria_online_full_v2_long_native_full_20261003_long_full/config/settings.yaml": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c"
+      }
+    }
+  ],
+  "interpretation": [
+    "Scores are local per-sequence official Score2D, not an aggregate leaderboard submission.",
+    "All three use identical frozen online_full_v2 executable, SLAM library and container image.",
+    "One official CP Sim3 is applied per selected trajectory. Other maps are not separately aligned or concatenated.",
+    "Largest-map selection uses pose count, not ground truth. Full CP and GT denominators remain in force.",
+    "Recovered-CP-only conditional score is a diagnostic, not the official score or a forecast of a repaired full run.",
+    "Dense pose recall is separate from Score2D. Missing CPs contribute zero official credit.",
+    "Long uses factory VRS intrinsics because inherited long calibration was an older independent-focal COLMAP refinement incompatible with the online model.",
+    "Therefore long versus the older baseline is not a calibration-only ablation. No short-run optimized calibration was copied into another device/sequence.",
+    "This comparison reads saved artifacts and invokes unchanged official metric functions. It runs no estimator, triangulation or new alignment."
+  ]
+}
