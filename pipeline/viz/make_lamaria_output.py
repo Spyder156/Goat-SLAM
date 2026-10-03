@@ -33,6 +33,18 @@ from scipy.spatial.transform import Rotation
 COLORS = np.array([[60, 140, 255], [245, 75, 65], [55, 215, 90]], dtype=np.uint8)
 MAPPED_COLOR = np.array([40, 230, 80], dtype=np.uint8)
 UNMATCHED_COLOR = np.array([245, 60, 60], dtype=np.uint8)
+BABY_PASSIVE_COLOR = np.array([50, 210, 245], dtype=np.uint8)
+BABY_ACTIVE_COLOR = np.array([255, 170, 25], dtype=np.uint8)
+BABY_IMU_COLOR = np.array([220, 90, 230], dtype=np.uint8)
+
+
+def baby_map_colors(mode, ordinary):
+    """Color only visualization geometry; solver activity comes from saved logs."""
+    if mode == 'baby':
+        return BABY_ACTIVE_COLOR.reshape(1, 3)
+    if mode == 'imu_only':
+        return BABY_IMU_COLOR.reshape(1, 3)
+    return ordinary
 
 
 def load_table(path, columns, delimiter=None, skiprows=0):
@@ -482,6 +494,7 @@ def main():
     parser.add_argument('--gt', type=relocated_path, help='Camera0 T_world_cam0 TUM: seconds or nanoseconds, xyzw')
     parser.add_argument('--evaluation-score', type=relocated_path, help='Saved local scores.json: display its exact CP Sim3 instead of the default metric SE3; requires a new --output-dir')
     parser.add_argument('--no-images', action='store_true', help='Debug only: explicitly omit video/stills')
+    parser.add_argument('--baby-overlays', action='store_true', help='Reconstruct passive Baby descriptor tracks in two extra camera views; show recorded SOS status and recolor the visible map')
     args = parser.parse_args()
     if args.evaluation_score and not args.output_dir:
         parser.error('--evaluation-score requires a new --output-dir to preserve the metric recording')
@@ -495,6 +508,10 @@ def main():
     if args.config.resolve() != config_copy.resolve():
         shutil.copy2(args.config, config_copy)
     raw = raw_files(run)
+    baby = None
+    if args.baby_overlays:
+        from baby_feature_overlays import BabyFeatureOverlay
+        baby = BabyFeatureOverlay(run)
     timestamps = np.array([int(line.strip().split()[0]) for line in args.timestamps.read_text().splitlines() if line.strip() and not line.startswith('#')], dtype=np.int64)
     if not len(timestamps) or np.any(np.diff(timestamps) <= 0):
         raise ValueError('Input timestamp list must be nonempty and strictly chronological')
@@ -604,20 +621,35 @@ def main():
                   'reprojection_note': 'Computed from available final-map point IDs and exported frame poses using Fisheye624. Missing coverage is NaN, never zero.',
                   'estimated_intrinsics': estimated_intrinsics,
                   'frusta_note': 'Equivalent-pinhole frusta from fx,fy,cx,cy; not the true fisheye field of view.'})
+    if baby is not None:
+        score['baby_visualization'] = {
+            'tracks': 'Reconstructed passive descriptor tracks, not recorded per-feature solver inliers.',
+            'track_colors': 'Cyan: passive candidates. Amber: candidates during logged SOS. Camera panels show unmapped tracks seen in at least two frames.',
+            'map_colors': 'Original: normal tracking. Amber: logged accepted Baby+IMU update. Magenta: SOS frame without an accepted Baby solve.',
+            'accepted_counts': 'Per-camera counts are the recorded SOS solver totals; individual accepted point IDs were not saved.',
+            'geometry': 'The same final optimized map and saved evaluation transform; recoloring does not change geometry or score.'}
     # Connect the file sink BEFORE logging any recording data.
-    rr.init('lamaria_evaluation' if args.evaluation_score else 'lamaria_slam', spawn=False)
+    rr.init('lamaria_baby_evaluation' if baby is not None else 'lamaria_evaluation' if args.evaluation_score else 'lamaria_slam', spawn=False)
     rr.save(str(out / 'run.rrd'))
     image_views = [rrb.Horizontal(rrb.Spatial2DView(origin='/cam0', name='Cam0 — green mapped / red unmapped'),
                                   rrb.Spatial2DView(origin='/cam1', name='Cam1 — green mapped / red unmapped')),
                    rrb.TimeSeriesView(origin='/counts', name='Mapped features by camera'),
                    rrb.TimeSeriesView(origin='/reprojection', name='Final-map reprojection RMS')]
-    if selected_geometry is not None:
+    row_shares = [5, 1, 1]
+    if baby is not None:
+        image_views.insert(1, rrb.Horizontal(
+            rrb.Spatial2DView(origin='/baby_cam0', name='Baby cam0 — reconstructed tracks'),
+            rrb.Spatial2DView(origin='/baby_cam1', name='Baby cam1 — reconstructed tracks')))
+        image_views.append(rrb.TextDocumentView(origin='/baby_status', name='SOS status and track legend'))
+        row_shares = [4, 4, 1, 1, 1.2]
+    elif selected_geometry is not None:
         image_views.append(rrb.TextDocumentView(origin='/evaluation_status', name='Evaluated-map coverage'))
+        row_shares.append(1)
     rr.send_blueprint(rrb.Blueprint(rrb.Horizontal(
         rrb.Spatial3DView(origin='/world', name='Evaluation Sim3 — map + trajectory + GT' if args.evaluation_score else 'Growing map + trajectory + GT', contents='/world/**',
             eye_controls=rrb.EyeControls3D(position=(center+scale*np.array([.85, -.85, .65])).tolist(), look_target=center.tolist(), eye_up=[0, 0, 1]),
             line_grid=rrb.LineGrid3D(visible=True, spacing=1., color=[70, 70, 78, 140])),
-        rrb.Vertical(*image_views, row_shares=[5, 1, 1, 1] if selected_geometry is not None else [5, 1, 1]), column_shares=[3, 2]),
+        rrb.Vertical(*image_views, row_shares=row_shares), column_shares=[3, 2]),
         rrb.TimePanel(timeline='t', play_state='Following', playback_speed=1., loop_mode='Selection',
             time_selection=rr.datatypes.AbsoluteTimeRange(
                 rr.datatypes.TimeInt(seconds=float(frame_times[0])), rr.datatypes.TimeInt(seconds=float(frame_times[-1]))))),
@@ -631,10 +663,16 @@ def main():
     for cam in (0, 1):
         rr.log(f'/counts/cam{cam}', rr.SeriesLines(colors=[COLORS[cam]], names=[f'cam{cam} mapped']))
         rr.log(f'/reprojection/cam{cam}', rr.SeriesLines(colors=[COLORS[cam]], names=[f'cam{cam} RMS px']))
+        if baby is not None:
+            rr.log(f'/counts/baby_cam{cam}', rr.SeriesLines(colors=[BABY_PASSIVE_COLOR if cam == 0 else [170, 120, 245]], names=[f'cam{cam} Baby candidates']))
     groups = iter(keypoint_groups(raw['kp_']))
     pending = next(groups, None)
     cloud_cursor = 0; cloud_batch = 0; cloud_points_logged = 0
     histories = [defaultdict(lambda: deque(maxlen=12)), defaultdict(lambda: deque(maxlen=12))]
+    baby_histories = [defaultdict(lambda: deque(maxlen=7)), defaultdict(lambda: deque(maxlen=7))]
+    map_batches = []
+    previous_baby_mode = 'normal'
+    baby_color_events = []
     previous_images = [None, None]; previous_locations = [{}, {}]
     still_indices = {len(timestamps)//4, len(timestamps)//2, 3*len(timestamps)//4}
     trajectory_chunk = 0; trajectory_segment = []; trajectory_stamps = []; last_pose_index = -1
@@ -650,6 +688,15 @@ def main():
             if observed:
                 pending = next(groups, None)
             rr.set_time('t', timestamp=float(t))
+            baby_frame = baby.advance(int(stamp), observations) if baby is not None else None
+            baby_mode = baby_frame['mode'] if baby_frame is not None else 'normal'
+            if baby_frame is not None and baby_mode != previous_baby_mode:
+                # Partial color updates preserve positions and reveal times. Never
+                # update an entity that has not yet appeared in the recording.
+                for entity, original_colors in map_batches:
+                    rr.log(entity, rr.Points3D.from_fields(colors=baby_map_colors(baby_mode, original_colors)))
+                baby_color_events.append({'time_s': float(t), 'mode': baby_mode, 'visible_batches': len(map_batches)})
+                previous_baby_mode = baby_mode
             if selected_geometry is not None:
                 frame_name = selected_geometry[3]['selected_coordinate_frame']
                 if pose_available[frame_number]:
@@ -666,8 +713,11 @@ def main():
                 selected = np.flatnonzero(keep[cloud_cursor:end])+cloud_cursor
                 if len(selected):
                     colors = COLORS[np.clip(cloud[selected, 4].astype(int), 0, 2)]
-                    rr.log(f'/world/map/part_{cloud_batch:06d}', rr.Points3D(points[selected], colors=colors, radii=.00025*scale),
+                    entity = f'/world/map/part_{cloud_batch:06d}'
+                    rr.log(entity, rr.Points3D(points[selected], colors=baby_map_colors(baby_mode, colors), radii=.00025*scale),
                            rr.AnyValues(landmark_id=cloud[selected, 5].astype(np.int64), coordinate_frame=[geometry_frame]))
+                    if baby is not None:
+                        map_batches.append((entity, colors))
                     cloud_batch += 1
                     cloud_points_logged += len(selected)
                 cloud_cursor = end
@@ -721,6 +771,27 @@ def main():
                         fade = 1-h/len(history)
                         segment_colors.append((MAPPED_COLOR*(1-.7*fade)+255*.7*fade).astype(np.uint8))
                 rr.log(f'/cam{cam}/image/trails', rr.LineStrips2D(segments, colors=segment_colors, radii=.65, draw_order=20.))
+                baby_pixels = np.empty((0, 2))
+                baby_segments = []
+                baby_color = BABY_ACTIVE_COLOR if baby_frame is not None and baby_frame['active'] else BABY_PASSIVE_COLOR
+                if baby_frame is not None:
+                    candidate = baby_frame['cameras'][cam]
+                    candidate_mask = (np.asarray(candidate['ages']) >= 2) & ~np.asarray(candidate['mapped'], dtype=bool)
+                    ids = np.asarray(candidate['track_ids'], dtype=np.int64)[candidate_mask]
+                    baby_pixels = rotate_pixels(np.asarray(candidate['pixels'])[candidate_mask], cameras[cam]['width'], cameras[cam]['height'], turns[cam])
+                    for identity, pixel in zip(ids, baby_pixels):
+                        history = baby_histories[cam][int(identity)]
+                        if history and t-history[-1][0] > 1.5*dt:
+                            history.clear()
+                        history.append((t, pixel))
+                        if len(history) >= 2:
+                            baby_segments.append([item[1] for item in history])
+                    rr.log(f'/baby_cam{cam}/image/keypoints', rr.Points2D(baby_pixels, colors=baby_color, radii=1.6, draw_order=30.),
+                           rr.AnyValues(reconstructed_track_id=ids))
+                    rr.log(f'/baby_cam{cam}/image/trails', rr.LineStrips2D(baby_segments, colors=baby_color, radii=.8, draw_order=20.))
+                    rr.log(f'/counts/baby_cam{cam}', rr.Scalars(len(baby_pixels)))
+                    if frame_number % 100 == 0:
+                        baby_histories[cam] = defaultdict(lambda: deque(maxlen=7), {key: value for key, value in baby_histories[cam].items() if value and t-value[-1][0] < .4})
                 if frame_number % 100 == 0:
                     histories[cam] = defaultdict(lambda: deque(maxlen=12), {key: value for key, value in histories[cam].items() if value and t-value[-1][0] < 1.})
                 if not args.no_images:
@@ -729,11 +800,23 @@ def main():
                     if image is None:
                         missing_images += 1
                         rr.log(f'/cam{cam}/image', rr.Clear(recursive=False))
+                        if baby_frame is not None:
+                            rr.log(f'/baby_cam{cam}/image', rr.Clear(recursive=False))
                     else:
                         ok, encoded = cv2.imencode('.jpg', cv2.cvtColor(image, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 90])
                         if not ok:
                             raise RuntimeError(f'Cannot encode image {path}')
                         rr.log(f'/cam{cam}/image', rr.EncodedImage(contents=encoded.tobytes(), media_type='image/jpeg'))
+                        if baby_frame is not None:
+                            rr.log(f'/baby_cam{cam}/image', rr.EncodedImage(contents=encoded.tobytes(), media_type='image/jpeg'))
+                            if (baby_frame['active'] and baby_frame['events']) or frame_number in still_indices:
+                                overlay = image.copy()
+                                for segment in baby_segments:
+                                    cv2.polylines(overlay, [np.rint(segment).astype(np.int32)], False, tuple(int(v) for v in baby_color), 1, cv2.LINE_AA)
+                                for pixel in baby_pixels:
+                                    cv2.circle(overlay, tuple(np.rint(pixel).astype(int)), 2, tuple(int(v) for v in baby_color), -1, cv2.LINE_AA)
+                                cv2.putText(overlay, f'Baby cam{cam}: {baby_mode}; {len(baby_pixels)} reconstructed candidates', (8, 22), cv2.FONT_HERSHEY_SIMPLEX, .43, (255, 255, 255), 1, cv2.LINE_AA)
+                                cv2.imwrite(str(out / 'viz' / f'baby_cam{cam}_{stamp}.png'), cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
                         if frame_number in still_indices and previous_images[cam] is not None:
                             pair = np.hstack([previous_images[cam], image]).copy(); width = image.shape[1]
                             common = sorted(set(locations) & set(previous_locations[cam]))
@@ -748,10 +831,21 @@ def main():
                             cv2.putText(overlay, f'cam{cam}: green {mapped} mapped / red {len(rows)-mapped} unmapped', (8, 22), cv2.FONT_HERSHEY_SIMPLEX, .45, (255, 255, 255), 1, cv2.LINE_AA)
                             cv2.imwrite(str(out / 'viz' / f'overlay_cam{cam}_{stamp}.png'), cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
                         previous_images[cam] = image; previous_locations[cam] = locations
+            if baby_frame is not None and (baby_frame['active'] or baby_frame['events'] or frame_number % 100 == 0):
+                geometry_note = geometry_status if selected_geometry is not None else 'Raw metric map visualization.'
+                counts = baby_frame['accepted_counts']
+                accepted_note = f'Recorded accepted Baby observations: cam0={counts[0]}, cam1={counts[1]}.' if counts is not None else 'No accepted Baby solver update on this frame.'
+                rr.log('/baby_status', rr.TextDocument(
+                    f"{baby_frame['status']}\n{accepted_note}\n"
+                    'Extra camera panes: reconstructed unmapped descriptor tracks, not recorded solver-inlier identities. '
+                    'Cyan = passive; amber = SOS. Map: amber = accepted Baby+IMU; magenta = IMU-only SOS.\n' + geometry_note))
             if frame_number % 1000 == 0:
                 print(f'packaged {frame_number}/{len(timestamps)} frames', flush=True)
     score['map_display_filter'].update({'recorded_points': cloud_points_logged,
                                         'eligible_points_outside_recording_interval': int(keep.sum())-cloud_points_logged})
+    if baby is not None:
+        score['baby_visualization'].update({'reconstruction': baby.summary(), 'map_color_events': baby_color_events})
+        (out / 'baby_visualization.json').write_text(json.dumps(score['baby_visualization'], indent=2) + '\n')
     score.update({'missing_images': missing_images, 'camera_frames_with_reprojection': reprojection_frames,
                   'map_points_recorded': cloud_points_logged})
     recording = rr.get_global_data_recording()
