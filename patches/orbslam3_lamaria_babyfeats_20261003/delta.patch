@@ -1,0 +1,216 @@
+--- a/src/Tracking.cc
++++ b/src/Tracking.cc
+@@ -27,6 +27,7 @@
+ #include "G2oTypes.h"
+ #include "Optimizer.h"
+ #include "TrackingStateRollback.h"
++#include "LamariaBabyTracker.h"
+ #include "Pinhole.h"
+ #include "KannalaBrandt8.h"
+ #include "MLPnPsolver.h"
+@@ -646,6 +647,7 @@
+ 
+ Tracking::~Tracking()
+ {
++    if(LamariaBabyEnabled())LamariaBabyStates().erase(this);
+     //f_track_stats.close();
+ 
+ }
+@@ -2990,6 +2992,9 @@
+ 
+ void Tracking::Track()
+ {
++    LamariaBabyTracker* baby=LamariaBabyEnabled()?&LamariaBabyState(this):nullptr;
++    bool babyAccepted=false;
++    std::unique_ptr<TrackingStateRollback> babyRelatchSnapshot;
+     if(mnMapDiagFrames > 0){
+         mnMapDiagFrames--;
+         std::cout << "[MAP-DIAG] frame " << mCurrentFrame.mnId
+@@ -3100,6 +3105,28 @@
+         pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
+         mbMapUpdated = true;
+     }
++
++    if(baby)baby->begin(mCurrentFrame,static_cast<long>(pCurrentMap->GetId()),mbMapUpdated);
++    // Solver-refined historical SOS poses must reach the native exporter too.
++    // Reanchor only retained frames to a live temporal KF in this same map.
++    auto refreshBabyHistory=[&]() {
++        if(!baby || !mpLastKeyFrame || mpLastKeyFrame->isBad() ||
++           mpLastKeyFrame->GetMap()!=pCurrentMap)return;
++        auto time=mlFrameTimes.rbegin();
++        auto relative=mlRelativeFramePoses.rbegin();
++        auto reference=mlpReferences.rbegin();
++        for(auto stored=baby->window.rbegin();stored!=baby->window.rend();++stored) {
++            Frame& optimized=*(*stored)->frame;
++            while(time!=mlFrameTimes.rend() && *time>optimized.mTimeStamp+1e-7) {
++                ++time;++relative;++reference;
++            }
++            if(time==mlFrameTimes.rend())break;
++            if(!(*stored)->normal && std::abs(*time-optimized.mTimeStamp)<1e-7) {
++                *relative=optimized.GetPose()*mpLastKeyFrame->GetPoseInverse();
++                *reference=mpLastKeyFrame;
++            }
++        }
++    };
+ 
+ 
+     if(mState==NOT_INITIALIZED)
+@@ -3211,6 +3238,8 @@
+                         // however far the IMU has drifted). Success replaces
+                         // the frame's pose+matches; TrackLocalMap confirms it.
+                         if(bOK && mbCoasting) {
++                            if(baby && baby->active)
++                                babyRelatchSnapshot.reset(new TrackingStateRollback(mCurrentFrame));
+                             const bool diagnosticRelatch=LocalMatchDiagnosticsEnabled();
+                             const Sophus::SE3f poseBeforeRelatch=mCurrentFrame.GetPose();
+                             int associationsBeforeRelatch[2]={0,0};
+@@ -3397,6 +3426,64 @@
+                 bOK = TrackLocalMap();
+         }
+ 
++        // Baby tracks are observations only during normal SLAM. The private
++        // VI graph is evaluated solely after the ordinary local-map path fails.
++        if(baby && !mbOnlyTracking && pCurrentMap->isImuInitialized() && mbCoastArmed) {
++            if(!bOK && babyRelatchSnapshot)babyRelatchSnapshot->restore(mCurrentFrame);
++            if(bOK) {
++                if(baby->active) {
++                    const BabySolveResult closure=baby->solve(mCurrentFrame,true);
++                    if(closure.accepted)refreshBabyHistory();
++                    baby->report(mCurrentFrame,"recovered",mnMatchesInliers,
++                                 closure.accepted?"retained_window_refined":closure.reason.c_str());
++                }
++                baby->active=false;baby->exhausted=false;baby->acceptedStreak=0;
++                baby->promotionPending=false;
++            } else if(mCurrentFrame.isSet() && !baby->exhausted) {
++                if(!baby->active) {
++                    baby->active=true;baby->enteredAt=mCurrentFrame.mTimeStamp;
++                    baby->acceptedStreak=0;
++                    baby->report(mCurrentFrame,"enter",mnMatchesInliers,"ordinary_tracking_failed");
++                }
++                // Actual visual support may renew the normal five-second
++                // grace, but this prototype never runs a blind/unbounded SOS.
++                if(mCurrentFrame.mTimeStamp-baby->enteredAt>10.0) {
++                    baby->report(mCurrentFrame,"expired",0,"ten_second_episode_limit");
++                    baby->exhausted=true;baby->promotionPending=false;
++                } else {
++                    baby->lastSolve=baby->solve(mCurrentFrame);
++                    babyAccepted=baby->lastSolve.accepted;
++                    const int supported=baby->lastSolve.currentInliers[0]+baby->lastSolve.currentInliers[1];
++                    baby->report(mCurrentFrame,babyAccepted?"accepted":"rejected",supported,
++                                 baby->lastSolve.reason.c_str());
++                    if(babyAccepted) {
++                        ++baby->acceptedStreak;
++                        mState=RECENTLY_LOST;
++                        mTimeStampLost=mCurrentFrame.mTimeStamp;
++                        mbCoasting=true;
++                        if(!mpCoastAnchorKF)mpCoastAnchorKF=mpLastKeyFrame;
++                        // Rejected map bindings must not hitchhike into a new
++                        // anchor. The temporary solver owns no MapPoints.
++                        std::fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),nullptr);
++                        std::fill(mCurrentFrame.mvbOutlier.begin(),mCurrentFrame.mvbOutlier.end(),false);
++                        refreshBabyHistory();
++                        int matureTemporary=0;
++                        for(const auto& landmark:baby->lastSolve.landmarks)
++                            if(landmark.verifiedViews>=3 && landmark.parallaxDegrees>=1.0 &&
++                               landmark.currentFeatureIndex>=0 && landmark.currentFeatureIndex<mCurrentFrame.N)
++                                ++matureTemporary;
++                        baby->promotionPending=matureTemporary>=50 && baby->acceptedStreak>=3 &&
++                            mCurrentFrame.mTimeStamp-baby->enteredAt>=0.15 &&
++                            mCurrentFrame.mTimeStamp-baby->lastPromotionAt>=0.5;
++                        if(baby->promotionPending)
++                            baby->report(mCurrentFrame,"promotion_pending",matureTemporary,"three_view_geometry");
++                    } else {
++                        baby->acceptedStreak=0;baby->promotionPending=false;
++                    }
++                }
++            }
++        }
++
+         if(bOK)
+         {
+             mState = OK;
+@@ -3565,7 +3652,10 @@
+ #ifdef REGISTER_TIMES
+             std::chrono::steady_clock::time_point time_StartNewKF = std::chrono::steady_clock::now();
+ #endif
+-            bool bNeedKF = NeedNewKeyFrame();
++            const bool babyBootstrap=baby && babyAccepted && baby->promotionPending &&
++                !mpLocalMapper->isStopped() && !mpLocalMapper->stopRequested() &&
++                !mpLocalMapper->IsInitializing() && mpLocalMapper->KeyframesInQueue()<2;
++            bool bNeedKF = NeedNewKeyFrame() || babyBootstrap;
+ 
+             // A proven inertial map may keep gathering visual constraints
+             // during the existing RECENTLY_LOST grace interval. Pure IMU
+@@ -3578,7 +3668,7 @@
+                     mState==RECENTLY_LOST && pCurrentMap->isImuInitialized() &&
+                     coastAge>=0.0 && coastAge<=time_recently_lost &&
+                     (mSensor==System::IMU_MONOCULAR || mSensor==System::IMU_STEREO || mSensor==System::IMU_RGBD);
+-            if(bNeedKF && ((bOK && !mbCoasting) || bCoastMapping))
++            if(bNeedKF && ((bOK && !mbCoasting) || bCoastMapping || babyBootstrap))
+             {
+                 if(bCoastMapping)
+                 {
+@@ -3643,6 +3733,7 @@
+         if(!mCurrentFrame.mpReferenceKF)
+             mCurrentFrame.mpReferenceKF = mpReferenceKF;
+ 
++        if(baby)baby->remember(mCurrentFrame,bOK,babyAccepted);
+         mLastFrame = Frame(mCurrentFrame);
+     }
+ 
+@@ -3650,6 +3741,7 @@
+ 
+ 
+     StoreFramePoseHistory();
++    if(baby && mState==OK)baby->remember(mCurrentFrame,true,false);
+ 
+ 
+ #ifdef REGISTER_LOOP
+@@ -5099,6 +5191,47 @@
+     }
+ 
+ 
++    // SOS-only bootstrap: temporary multiview geometry may seed the next
++    // ordinary keyframe without starting a disconnected Atlas map. The IMU
++    // predecessor and preintegration are created by the unchanged path above.
++    // Frame-only observations are deliberately not forged as KF observations.
++    if(LamariaBabyEnabled()) {
++        LamariaBabyTracker& baby=LamariaBabyState(this);
++        if(baby.active && baby.promotionPending && baby.lastSolve.accepted) {
++            int promoted=0;
++            for(const auto& landmark:baby.lastSolve.landmarks) {
++                const int index=landmark.currentFeatureIndex;
++                if(landmark.verifiedViews<3 || landmark.parallaxDegrees<1.0 ||
++                   index<0 || index>=mCurrentFrame.N || pKF->GetMapPoint(index) ||
++                   mCurrentFrame.mvpMapPoints[index] || !landmark.worldPoint.allFinite())continue;
++                const int camera=mCurrentFrame.Nleft>=0 && index>=mCurrentFrame.Nleft?1:0;
++                const int localIndex=camera?index-mCurrentFrame.Nleft:index;
++                const auto& key=camera?mCurrentFrame.mvKeysRight[localIndex]:mCurrentFrame.mvKeys[localIndex];
++                const Sophus::SE3f pose=camera?mCurrentFrame.GetRelativePoseTrl()*mCurrentFrame.GetPose():mCurrentFrame.GetPose();
++                const Eigen::Vector3f world=landmark.worldPoint.cast<float>();
++                const Eigen::Vector3f pc=pose*world;
++                GeometricCamera* model=camera?mCurrentFrame.mpCamera2:mCurrentFrame.mpCamera;
++                if(!model || pc.z()<=0)continue;
++                const Eigen::Vector2f pixel=model->project(pc);
++                const double inverseVariance=mCurrentFrame.mvInvLevelSigma2[key.octave];
++                const Eigen::Vector2d measured(key.pt.x,key.pt.y);
++                if(!pixel.allFinite() || (pixel.cast<double>()-measured).squaredNorm()*inverseVariance/
++                    std::max(1e-9,static_cast<double>(model->uncertainty2(measured)))>5.991)continue;
++                MapPoint* point=new MapPoint(world,pKF,mpAtlas->GetCurrentMap());
++                point->AddObservation(pKF,index);
++                pKF->AddMapPoint(point,index);
++                mCurrentFrame.mvpMapPoints[index]=point;
++                mCurrentFrame.mvbOutlier[index]=false;
++                point->ComputeDistinctiveDescriptors();point->UpdateNormalAndDepth();
++                mpAtlas->AddMapPoint(point);
++                ++promoted;
++            }
++            baby.lastPromotionAt=mCurrentFrame.mTimeStamp;
++            baby.promotionPending=false;
++            baby.report(mCurrentFrame,"promoted",promoted,"same_map_temporal_keyframe");
++        }
++    }
++
+     if(mbUseLines)
+         // publish AFTER the post-Track() line block finalises this frame's
+         // bindings (triangulation, validation, re-acquisition): the snapshot

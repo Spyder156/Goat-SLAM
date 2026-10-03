@@ -1,0 +1,22 @@
+{
+  "parent_profile": "orbslam3_lamaria_online_full_v2",
+  "branch": "experiments/BabyFeats",
+  "changes": [
+    "src/Tracking.cc",
+    "src/LamariaBabySolver.cc",
+    "include/LamariaBabySolver.h",
+    "include/LamariaBabyTracker.h"
+  ],
+  "parent_build_manifest_sha256": "5e3b8fffb60bf91a58a46b62ee09dd2fa23d158d4806bba6a3f33124a0fabc7d",
+  "candidate_sources_sha256": {
+    "src/Tracking.cc": "43d689213076f01ad1449f8827790701672c45e5ad5fbbcfa464cf7da4568d37",
+    "src/LamariaBabySolver.cc": "a866cedef75ce8554bf084abf903f13cf8a573cf2cb1ee997bb09a9bc4e25934",
+    "include/LamariaBabySolver.h": "a3640d8ebb217b94344fa829e9ff0190883395866b6b6b39fd12bf6a9bf14986",
+    "include/LamariaBabyTracker.h": "d306f6461bf175387e9c6bef73b7e3f35ad395b360c27930a5bc4349e355527d"
+  },
+  "delta_sha256": "31f8acaac6a83677f95bd0fdab712fe0a771a372a5951b75d126c23a0713400c",
+  "geometry_patch_sha256": "d0f5ed7b71087b3749196eacde3aed26994e3474f5a24d6dec0592ba4a7d566e",
+  "normal_estimator_uses_baby_factors": false,
+  "passive_tracking_enabled": true,
+  "ground_truth_in_estimator": false
+}
