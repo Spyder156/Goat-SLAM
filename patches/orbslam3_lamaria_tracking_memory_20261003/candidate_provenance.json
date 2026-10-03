@@ -1,0 +1,17 @@
+{
+  "base": "orbslam3_lamaria_online_full_v2",
+  "base_manifest_sha256": "5e3b8fffb60bf91a58a46b62ee09dd2fa23d158d4806bba6a3f33124a0fabc7d",
+  "candidate_library_sha256": "b7c51ee90aec4bb40c2d74c31d9e1ea252380ba7737981df15c33c9e7605afa6",
+  "unchanged_runner_sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66",
+  "cumulative_patch_sha256": "030ed3cb599ae5d298c3af32500f332e9686f785efe83ee9c5731ee8806dba59",
+  "delta_patch_sha256": "6fba9b3811c6c4a08b75af05b5be8533d2e853b15c5ea7149d800ead008e108a",
+  "tracking_memory_helper_sha256": "6ff7dcd9b8cf49bd7fbac9847135dfdbed6958fe9d5528163a5b1d056fd1f2c4",
+  "private_build_manifest_sha256": "7df2c06297a96307120fae8cc0db4da046f5776ac6b074ef12e2091231ac1def",
+  "contract_results_sha256": "3cb3d145a255c5fcac563a414ab1af7b6c8f3d2ba6422d52ada2d96d2a13f813",
+  "contract_cases": 17,
+  "contract_checks": 23,
+  "contract_passed": true,
+  "package_reconstruction_checked_source_files": 75,
+  "baseline_vendor_changed": false,
+  "replay_status": "full Medium/Long coordinated harness launched; consult run summaries for outcomes"
+}
