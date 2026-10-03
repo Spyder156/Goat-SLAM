@@ -1,0 +1,227 @@
+{
+  "medium": {
+    "summary": {
+      "label": "tracking_memory / medium",
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_medium/runs/tracking_memory_medium_medium_full",
+      "score_path": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_medium/runs/tracking_memory_medium_medium_full/lamaria_score/scores.json",
+      "Score2D": 45.87474954487828,
+      "CP_triangulated": 12,
+      "CP_total": 18,
+      "CP_within_1m": 10,
+      "GT_associated": 2115,
+      "GT_total": 4083,
+      "retained_maps": 4,
+      "selected_poses": 11826,
+      "atlas_poses": 22327,
+      "native_input_frames": 23748,
+      "scored_pose_coverage": 0.4979787771601819,
+      "CP_sim3_scale": 1.0245537012830246,
+      "horizontal_errors_m": {
+        "median": 0.5184972669675412,
+        "rmse": 0.9823768353796416,
+        "p90": 0.7604824284953215,
+        "maximum": 7.872797980210138
+      },
+      "online_rows": 23746,
+      "online_map_epochs": 9,
+      "coasted_frames": 455,
+      "tracking_ok_frames": 22455,
+      "log_counters": {
+        "recovery_calls": 447,
+        "recovery_successes": 0,
+        "recovery_hypotheses": 10,
+        "loop_detection_markers": 0,
+        "merge_detection_markers": 0
+      },
+      "diagnostic_plot": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_medium/diagnostics.png"
+    },
+    "memory_funnel": {
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_medium/runs/tracking_memory_medium_medium_full",
+      "logged_frames": 2339,
+      "map_epoch_transitions": [
+        {
+          "map_id": 0,
+          "init_keyframe_id": 0,
+          "time": 68.437374837
+        },
+        {
+          "map_id": 1,
+          "init_keyframe_id": 1628,
+          "time": 662.437374787
+        },
+        {
+          "map_id": 1,
+          "init_keyframe_id": 1680,
+          "time": 686.937393837
+        },
+        {
+          "map_id": 2,
+          "init_keyframe_id": 1857,
+          "time": 769.137374837
+        },
+        {
+          "map_id": 2,
+          "init_keyframe_id": 1901,
+          "time": 793.687374787
+        },
+        {
+          "map_id": 2,
+          "init_keyframe_id": 1905,
+          "time": 799.137393837
+        },
+        {
+          "map_id": 3,
+          "init_keyframe_id": 2873,
+          "time": 1227.637393837
+        },
+        {
+          "map_id": 3,
+          "init_keyframe_id": 2880,
+          "time": 1237.687374837
+        },
+        {
+          "map_id": 3,
+          "init_keyframe_id": 2888,
+          "time": 1241.387393837
+        }
+      ],
+      "seeded_by_camera": [
+        3124,
+        3087
+      ],
+      "retained_by_camera": [
+        1646,
+        1619
+      ],
+      "frames_with_memory_proposals": 1266,
+      "successful_frames_with_retained_memory": 1058,
+      "seeded_camera_associations": 6211,
+      "accepted_camera_associations": 3265,
+      "accepted_fraction": 0.5256802447270971,
+      "max_cache_entries": 2215,
+      "logged_local_map_failures": 460,
+      "interpretation": "Counts describe this run. They do not prove the counterfactual tracker would fail without the seeded associations."
+    },
+    "summary_sha256": "bebf03823375a167d6b985bc8d7072f349e6bd2df7d931c0d367facde94c99fa",
+    "official_score_sha256": "13d129e39682db010b120ad3ec64340df8329df788e878cb3c9c3316ddb5feeb",
+    "memory_diagnostic_sha256": "6da59a78e7ec3a53496917f728b69aa60a32fa85fe4fbfdfbb88e67b8846517a"
+  },
+  "long": {
+    "summary": {
+      "label": "tracking_memory / long",
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_long/runs/tracking_memory_long_long_full",
+      "score_path": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_long/runs/tracking_memory_long_long_full/lamaria_score/scores.json",
+      "Score2D": 42.9045627378979,
+      "CP_triangulated": 19,
+      "CP_total": 27,
+      "CP_within_1m": 8,
+      "GT_associated": 4163,
+      "GT_total": 6118,
+      "retained_maps": 6,
+      "selected_poses": 24502,
+      "atlas_poses": 33921,
+      "native_input_frames": 35842,
+      "scored_pose_coverage": 0.6836114056135261,
+      "CP_sim3_scale": 1.0338327653414363,
+      "horizontal_errors_m": {
+        "median": 1.0923380944172643,
+        "rmse": 1.130287913258903,
+        "p90": 1.5730562889790478,
+        "maximum": 2.180156956978061
+      },
+      "online_rows": 35842,
+      "online_map_epochs": 11,
+      "coasted_frames": 616,
+      "tracking_ok_frames": 33840,
+      "log_counters": {
+        "recovery_calls": 616,
+        "recovery_successes": 1,
+        "recovery_hypotheses": 2,
+        "loop_detection_markers": 0,
+        "merge_detection_markers": 0
+      },
+      "diagnostic_plot": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_long/diagnostics.png"
+    },
+    "memory_funnel": {
+      "run": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/tracking_memory_long/runs/tracking_memory_long_long_full",
+      "logged_frames": 2378,
+      "map_epoch_transitions": [
+        {
+          "map_id": 0,
+          "init_keyframe_id": 0,
+          "time": 152.349294899
+        },
+        {
+          "map_id": 0,
+          "init_keyframe_id": 29,
+          "time": 163.499313924
+        },
+        {
+          "map_id": 1,
+          "init_keyframe_id": 732,
+          "time": 413.349313924
+        },
+        {
+          "map_id": 2,
+          "init_keyframe_id": 3623,
+          "time": 1640.549294924
+        },
+        {
+          "map_id": 2,
+          "init_keyframe_id": 3627,
+          "time": 1659.149294925
+        },
+        {
+          "map_id": 3,
+          "init_keyframe_id": 3678,
+          "time": 1677.999294924
+        },
+        {
+          "map_id": 4,
+          "init_keyframe_id": 3848,
+          "time": 1743.149313924
+        },
+        {
+          "map_id": 4,
+          "init_keyframe_id": 3858,
+          "time": 1748.049313911
+        },
+        {
+          "map_id": 4,
+          "init_keyframe_id": 3884,
+          "time": 1788.649313924
+        },
+        {
+          "map_id": 5,
+          "init_keyframe_id": 4022,
+          "time": 1854.899294925
+        },
+        {
+          "map_id": 5,
+          "init_keyframe_id": 4062,
+          "time": 1873.649294886
+        }
+      ],
+      "seeded_by_camera": [
+        2009,
+        1778
+      ],
+      "retained_by_camera": [
+        1211,
+        987
+      ],
+      "frames_with_memory_proposals": 686,
+      "successful_frames_with_retained_memory": 607,
+      "seeded_camera_associations": 3787,
+      "accepted_camera_associations": 2198,
+      "accepted_fraction": 0.5804066543438078,
+      "max_cache_entries": 1731,
+      "logged_local_map_failures": 621,
+      "interpretation": "Counts describe this run. They do not prove the counterfactual tracker would fail without the seeded associations."
+    },
+    "summary_sha256": "50a354f764a1d1bb37e1dcb37f7c4f24499460d36c06f2476d5527e6dca4d05c",
+    "official_score_sha256": "49764c3fda3ca3f027304606eee6f86d1a25b23a9f118c2464ad83a16f1bd0cc",
+    "memory_diagnostic_sha256": "7d73a14f57b99d6639e32271f0a75ef40cd0e1981f2148e00b4ad7b0021376aa"
+  },
+  "conclusion": "Mixed: Medium regressed; Long improved over frozen v2 native transfer while remaining fragmented. Shared A/B rollback repair, online calibration consequences and scheduling are also part of this comparison. Candidate is not promoted."
+}

@@ -69,3 +69,47 @@ Build and contract output:
 Full Medium and Long run result paths (created by the coordinated harness):
   experiments/lamaria_continuity_batch_20261003/tracking_memory_medium/
   experiments/lamaria_continuity_batch_20261003/tracking_memory_long/
+
+First completed real-sequence outcome:
+Full Medium: Score2D 45.8747495, 12/18 control points, four retained maps,
+49.80% scored native coverage. This regressed versus the frozen v2 Medium
+62.76 result. Memory proposed 6,211 camera associations; 3,265 survived in
+accepted frames (52.57%), across 1,058 frames. More accepted associations did
+not produce better sequence continuity. Do not promote this candidate from
+that result. This comparison includes the shared A/B relatch transaction
+repair and runtime scheduling, so it is not a pure causal memory ablation.
+See the case's summary.json and tracking_memory_diagnostic.{json,png}.
+
+Completed Long outcome:
+Full Long: Score2D 42.9045627 versus frozen-v2 native transfer 34.46;
+19/27 control points, only 8 within one metre, six retained maps and
+68.36% scored native coverage. Largest connected interval was approximately
+413.35--1640.55 seconds. Median horizontal error 1.092 m; RMSE 1.130 m.
+Memory proposed 3,787 camera associations; 2,198 survived accepted frames
+(58.04%), across 607 frames. It did not eliminate late fragmentation.
+
+Calibration interaction: Long accepted four full calibration updates before
+its first retained-map split, while frozen v2 Long accepted one. More early
+continuity therefore changed subsequent calibration as well. Medium accepted
+three updates versus v2 Medium's four. The final comparison is not a pure
+causal ablation of descriptor memory. Both runs are preserved as a mixed
+result; no replacement of the validated default is made by this package.
+Machine-readable outcomes and score hashes: results_summary.json.
+
+Final comparison and coverage audit:
+The earlier continuous Long baseline remains stronger: 49.8815336 versus
+this candidate's 42.9045627 (6.9769709 points lower). That earlier run used
+different initial calibration, so this is a retained performance reference,
+not a matched ablation. Beating native-v2 Long's 34.46 is not a new best.
+Medium also remains below frozen v2. Do not promote B as the default.
+
+Saved official scores, case summaries and batch comparison agree exactly.
+Medium retained four exported map epochs but encountered nine online epochs;
+Long retained six but encountered eleven. Reset epochs can share a map ID,
+and discarded epochs do not appear in the retained atlas export.
+Native input-pose coverage of the selected scored map is 49.7979% / 68.3611%
+(Medium / Long). GT timestamp association coverage is separately
+2115/4083 = 51.8001% and 4163/6118 = 68.0451%; these denominators differ.
+Only the largest retained map is officially scored. Other atlas maps are
+not joined or independently GT-aligned to inflate this coverage or score.
+The comparison uses the evaluator's saved CP Sim3 for visualization only.

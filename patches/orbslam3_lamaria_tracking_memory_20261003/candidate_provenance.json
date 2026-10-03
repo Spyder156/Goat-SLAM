@@ -13,5 +13,6 @@
   "contract_passed": true,
   "package_reconstruction_checked_source_files": 75,
   "baseline_vendor_changed": false,
-  "replay_status": "full Medium/Long coordinated harness launched; consult run summaries for outcomes"
+  "replay_status": "Both full Medium and Long completed normally and were scored; see results_summary.json",
+  "results_summary_sha256": "ff38a6373450e9794eaca24fe964856fa7da6ab5c8bcbac47ee5d1a9f9697714"
 }

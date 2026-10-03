@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Summarize observed B proposals/accepted associations; never modifies estimator outputs."""
 import argparse
+import csv
 import json
 from pathlib import Path
 
@@ -23,7 +24,17 @@ def main():
     seeded=[sum(r['seeded']) for r in records]
     retained=[sum(r['retained']) for r in records]
     total_seeded=sum(seeded);total_retained=sum(retained)
+    transitions=[];previous=None
+    for path in run.glob('online_*.csv'):
+        for row in csv.DictReader(path.open()):
+            epoch=(row['map_id'],row['map_init_kf_id'])
+            if epoch!=previous:
+                transitions.append({'map_id':int(epoch[0]),'init_keyframe_id':int(epoch[1]),'time':float(row['input_t_s'])})
+                previous=epoch
     result={'run':str(run),'logged_frames':len(records),
+            'map_epoch_transitions':transitions,
+            'seeded_by_camera':[sum(r['seeded'][c] for r in records) for c in range(2)],
+            'retained_by_camera':[sum(r['retained'][c] for r in records) for c in range(2)],
             'frames_with_memory_proposals':sum(x>0 for x in seeded),
             'successful_frames_with_retained_memory':sum(x>0 for x in retained),
             'seeded_camera_associations':total_seeded,'accepted_camera_associations':total_retained,
