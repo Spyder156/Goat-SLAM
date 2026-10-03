@@ -1,0 +1,12 @@
+{
+  "baseline_build_manifest_sha256": "5b10399d71dc2191fcd2a6e013850a1742051450fb49033dfd1e56f8da73e560",
+  "baseline_patch_sha256": "037b9dd52b74f000755b8ac672c47bbde9ae2ba2cb74d66a1a5009c1487291d6",
+  "modified_sources": {
+    "src/ORBmatcher.cc": "87bbbbb038754e8ccd11641bf2b4150ffeea0fe8fbc211d5d94f34edec0ab5e4",
+    "src/LocalMapping.cc": "92322d3d8fe2f3a711a9900d1bcfd8f7b667af04571f30ab28baef80ff953d31",
+    "src/MapPoint.cc": "0abdf385bd6a2bbcc80e76599011b27690db3327e255384a5f519f99359081c9",
+    "src/Tracking.cc": "df004a7070d6b04e134e8eac9c6e707d39cc3700cb41a53443d9b8905a7e6f35",
+    "src/System.cc": "fafa72db71493a3a1098efd6b05ec4ae36e4bf0f2ca33968d38e100fb7c57d6c"
+  },
+  "public_headers_changed_from_baseline": false
+}

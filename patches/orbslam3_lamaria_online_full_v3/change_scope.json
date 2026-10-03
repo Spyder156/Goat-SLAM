@@ -1,0 +1,12 @@
+{
+  "base": "orbslam3_lamaria_online_full_v2",
+  "changed_estimator_files": [
+    "include/TrackingStateRollback.h",
+    "include/Tracking.h",
+    "src/Tracking.cc"
+  ],
+  "same_calibration_solver_and_bounds": true,
+  "same_matching_thresholds": true,
+  "same_no_coast_keyframe_policy": true,
+  "only_behavior_change": "Capture rollback target at successful IMU propagation before visual relatch; reject the complete visual update if local-map validation fails."
+}
