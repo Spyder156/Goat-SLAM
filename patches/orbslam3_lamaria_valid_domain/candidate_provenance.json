@@ -1,0 +1,11 @@
+{
+  "base": "orbslam3_lamaria_observations",
+  "base_manifest_sha256": "14de111eff356352b60bd4875a0f1652b43dadc59635b322cc6278fadc98b9c3",
+  "stage": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/lamaria_valid_domain_staging",
+  "modified_sources": {
+    "src/Settings.cc": "c7dfedb72b8e12be8dfa3de0f2ba7b4785a3804a6e92eefc0dfff35a1723fe0b",
+    "src/Frame.cc": "66ed0b7723dacaba1f64e43079900c0772ba038f3b19badb24154148bd4905d6",
+    "src/CameraModels/Fisheye624.cpp": "d098af6955ff1d2ebbf605fb9222fdd6861f3f60c4d1e223ed1ee489ef395d59",
+    "include/CameraModels/Fisheye624.h": "bed6f5fb5b2f5e5525d61177021f0b18897e645d2f0c8136823ae8b844185ae9"
+  }
+}

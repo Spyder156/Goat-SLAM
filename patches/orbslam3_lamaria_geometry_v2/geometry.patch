@@ -1,0 +1,830 @@
+--- a/src/Frame.cc
++++ b/src/Frame.cc
+@@ -17,6 +17,7 @@
+ */
+ 
+ #include "Frame.h"
++#include <algorithm>
+ #include <cstdio>
+ #include <cstdlib>
+ #include "Fisheye624.h"
+@@ -455,7 +456,29 @@
+             for(int i=0;i<n;i++)
+                 K.emplace_back(xy[2*i], xy[2*i+1], 31.f, 0.f, resp[i], 0);
+             Dm = cv::Mat(n, 32, CV_8U, d.data()).clone();
+-            if(flag==0) monoLeft = n; else monoRight = n;
++            // ORB's overlap contract: [0, mono) is outside the overlap;
++            // [mono, N) is eligible for calibrated stereo triangulation.
++            // Keep keypoint and descriptor order identical when partitioning.
++            int mono = 0;
++            std::vector<int> order;
++            order.reserve(n);
++            for(int i=0; i<n; ++i)
++                if(x1 <= x0 || K[i].pt.x < x0 || K[i].pt.x > x1)
++                    order.push_back(i);
++            mono = static_cast<int>(order.size());
++            for(int i=0; i<n; ++i)
++                if(x1 > x0 && K[i].pt.x >= x0 && K[i].pt.x <= x1)
++                    order.push_back(i);
++            std::vector<cv::KeyPoint> orderedKeys;
++            orderedKeys.reserve(n);
++            cv::Mat orderedDescriptors(n, 32, CV_8U);
++            for(int i=0; i<n; ++i) {
++                orderedKeys.push_back(K[order[i]]);
++                Dm.row(order[i]).copyTo(orderedDescriptors.row(i));
++            }
++            K.swap(orderedKeys);
++            Dm = orderedDescriptors;
++            if(flag==0) monoLeft = mono; else monoRight = mono;
+             if(!announced){
+                 std::cout << "[KP-EXT] external keypoints active: " << kpdir
+                           << " (first frame n=" << n << ")" << std::endl;
+@@ -1197,31 +1220,8 @@
+ }
+ 
+ void Frame::ComputeStereoFishEyeMatches() {
+-    // MONO-RIG: on a non-overlapping (back-to-back) rig the two cameras share no
+-    // field of view at any instant, so every "stereo" match is false. Skip the
+-    // matching and leave the correspondence/depth arrays empty; every downstream
+-    // site already guards on mvLeftToRightMatch[i] != -1, so both cameras then
+-    // contribute purely MONOCULAR observations -- which is correct for this rig.
+-    // Depth comes from triangulating across TIME, not across lenses.
+-    if (Rig::NonOverlappingGlobal()) {
+-        Rig::StageOnce("frame", "non-overlapping rig: cross-camera stereo "
+-                                "matching SKIPPED; both cameras are monocular");
+-        mvLeftToRightMatch = std::vector<int>(Nleft, -1);
+-        mvRightToLeftMatch = std::vector<int>(Nright, -1);
+-        mvDepth = std::vector<float>(Nleft, -1.0f);
+-        mvuRight = std::vector<float>(Nleft, -1);
+-        mvStereo3Dpoints = std::vector<Eigen::Vector3f>(Nleft);
+-        mnCloseMPs = 0;
+-        return;
+-    }
+-
+-    //Speed it up by matching keypoints in the lapping area
+-    vector<cv::KeyPoint> stereoLeft(mvKeys.begin() + monoLeft, mvKeys.end());
+-    vector<cv::KeyPoint> stereoRight(mvKeysRight.begin() + monoRight, mvKeysRight.end());
+-
+-    cv::Mat stereoDescLeft = mDescriptors.rowRange(monoLeft, mDescriptors.rows);
+-    cv::Mat stereoDescRight = mDescriptorsRight.rowRange(monoRight, mDescriptorsRight.rows);
+-
++    // Always publish well-formed empty correspondence/depth arrays, including
++    // frames with no descriptors or too few right candidates for a ratio test.
+     mvLeftToRightMatch = vector<int>(Nleft,-1);
+     mvRightToLeftMatch = vector<int>(Nright,-1);
+     mvDepth = vector<float>(Nleft,-1.0f);
+@@ -1229,29 +1229,49 @@
+     mvStereo3Dpoints = vector<Eigen::Vector3f>(Nleft);
+     mnCloseMPs = 0;
+ 
+-    //Perform a brute force between Keypoint in the left and right image
++    if (Rig::NonOverlappingGlobal()) {
++        Rig::StageOnce("frame", "non-overlapping rig: cross-camera stereo "
++                                "matching SKIPPED; both cameras are monocular");
++        return;
++    }
++
++    if(mDescriptors.empty() || mDescriptorsRight.empty() ||
++       monoLeft < 0 || monoLeft >= mDescriptors.rows ||
++       monoRight < 0 || monoRight > mDescriptorsRight.rows-2)
++        return;
++
++    // Only descriptors in the calibrated overlap region participate.
++    cv::Mat stereoDescLeft = mDescriptors.rowRange(monoLeft, mDescriptors.rows);
++    cv::Mat stereoDescRight = mDescriptorsRight.rowRange(monoRight, mDescriptorsRight.rows);
+     vector<vector<cv::DMatch>> matches;
+-
+     BFmatcher.knnMatch(stereoDescLeft,stereoDescRight,matches,2);
+ 
+-    int nMatches = 0;
+-    int descMatches = 0;
+-
+-    //Check matches using Lowe's ratio
+-    for(vector<vector<cv::DMatch>>::iterator it = matches.begin(); it != matches.end(); ++it){
+-        if((*it).size() >= 2 && (*it)[0].distance < (*it)[1].distance * 0.7){
+-            //For every good match, check parallax and reprojection error to discard spurious matches
+-            Eigen::Vector3f p3D;
+-            descMatches++;
+-            float sigma1 = mvLevelSigma2[mvKeys[(*it)[0].queryIdx + monoLeft].octave], sigma2 = mvLevelSigma2[mvKeysRight[(*it)[0].trainIdx + monoRight].octave];
+-            float depth = mpCamera->TriangulateMatches(mpCamera2,mvKeys[(*it)[0].queryIdx + monoLeft],mvKeysRight[(*it)[0].trainIdx + monoRight],mRlr,mtlr,sigma1,sigma2,p3D);
+-            if(depth > 0.0001f){
+-                mvLeftToRightMatch[(*it)[0].queryIdx + monoLeft] = (*it)[0].trainIdx + monoRight;
+-                mvRightToLeftMatch[(*it)[0].trainIdx + monoRight] = (*it)[0].queryIdx + monoLeft;
+-                mvStereo3Dpoints[(*it)[0].queryIdx + monoLeft] = p3D;
+-                mvDepth[(*it)[0].queryIdx + monoLeft] = depth;
+-                nMatches++;
+-            }
++    // Best descriptor claims are considered first. An unsuccessful geometric
++    // test does not reserve the right feature for that candidate.
++    vector<cv::DMatch> candidates;
++    candidates.reserve(matches.size());
++    for(const auto& neighbors : matches)
++        if(neighbors.size() >= 2 && neighbors[0].distance < neighbors[1].distance*0.7f)
++            candidates.push_back(neighbors[0]);
++    std::stable_sort(candidates.begin(),candidates.end(),
++        [](const cv::DMatch& a,const cv::DMatch& b){ return a.distance < b.distance; });
++
++    for(const cv::DMatch& match : candidates) {
++        const int leftIndex = match.queryIdx + monoLeft;
++        const int rightIndex = match.trainIdx + monoRight;
++        if(mvRightToLeftMatch[rightIndex] != -1)
++            continue;
++
++        Eigen::Vector3f p3D;
++        const float sigma1 = mvLevelSigma2[mvKeys[leftIndex].octave];
++        const float sigma2 = mvLevelSigma2[mvKeysRight[rightIndex].octave];
++        const float depth = mpCamera->TriangulateMatches(mpCamera2,
++            mvKeys[leftIndex],mvKeysRight[rightIndex],mRlr,mtlr,sigma1,sigma2,p3D);
++        if(depth > 0.0001f) {
++            mvLeftToRightMatch[leftIndex] = rightIndex;
++            mvRightToLeftMatch[rightIndex] = leftIndex;
++            mvStereo3Dpoints[leftIndex] = p3D;
++            mvDepth[leftIndex] = depth;
+         }
+     }
+ }
+--- a/src/Tracking.cc
++++ b/src/Tracking.cc
+@@ -30,6 +30,67 @@
+ #include "KannalaBrandt8.h"
+ #include "MLPnPsolver.h"
+ #include "GeometricTools.h"
++
++#include "MetricRigInitialization.h"
++
++namespace ORB_SLAM3 { namespace {
++MetricRigScaleObservations CollectRigScaleObservations(
++    Frame& first, Frame& current,
++    const std::vector<Eigen::Vector3f>& worldPoints,
++    const std::vector<int>& matches,
++    const Sophus::SE3f& firstPose, const Sophus::SE3f& currentPose)
++{
++    MetricRigScaleObservations observations;
++    Frame* frames[2] = {&first, &current};
++    const Sophus::SE3f poses[2] = {firstPose, currentPose};
++    for(size_t i=0; i<matches.size() && i<worldPoints.size(); ++i) {
++        if(matches[i]<0 || !worldPoints[i].allFinite()) continue;
++        for(int cameraTime=0; cameraTime<2; ++cameraTime) {
++            Frame& frame=*frames[cameraTime];
++            const int left=cameraTime==0 ? static_cast<int>(i) : matches[i];
++            if(left<0 || left>=frame.Nleft) continue;
++            const int right=frame.mvLeftToRightMatch[left];
++            if(right<0) continue;
++            MetricRigScaleObservation observation;
++            observation.landmarkId=i;
++            observation.bootstrapPointCam0=(poses[cameraTime]*worldPoints[i]).cast<double>();
++            observation.metricStereoPointCam0=frame.mvStereo3Dpoints[left].cast<double>();
++            observation.pixelCam0=Eigen::Vector2d(frame.mvKeys[left].pt.x,frame.mvKeys[left].pt.y);
++            observation.pixelCam1=Eigen::Vector2d(frame.mvKeysRight[right].pt.x,frame.mvKeysRight[right].pt.y);
++            const Sophus::SE3f relative=frame.GetRelativePoseTrl();
++            observation.R10=relative.rotationMatrix().cast<double>();
++            observation.t10Metres=relative.translation().cast<double>();
++            observation.camera0=frame.mpCamera;
++            observation.camera1=frame.mpCamera2;
++            observations.push_back(observation);
++        }
++    }
++    return observations;
++}
++void AddMetricRigObservations(KeyFrame* keyFrame, Frame& frame)
++{
++    for(int left=0; left<frame.Nleft; ++left) {
++        const int right=frame.mvLeftToRightMatch[left];
++        if(right<0) continue;
++        MapPoint* point=keyFrame->GetMapPoint(left);
++        if(!point || point->isBad()) continue;
++        const Eigen::Vector3f pc1=keyFrame->GetRightPose()*point->GetWorldPos();
++        if(pc1.z()<=0) continue;
++        const Eigen::Vector2f uv=frame.mpCamera2->project(pc1);
++        const cv::Point2f measured=frame.mvKeysRight[right].pt;
++        if(!uv.allFinite() || (uv-Eigen::Vector2f(measured.x,measured.y)).squaredNorm()>6.25f) continue;
++        const int index=frame.Nleft+right;
++        if(keyFrame->GetMapPoint(index)) continue;
++        point->AddObservation(keyFrame,index);
++        keyFrame->AddMapPoint(point,index);
++        frame.mvpMapPoints[index]=point;
++        frame.mvbOutlier[index]=false;
++        point->ComputeDistinctiveDescriptors();
++        point->UpdateNormalAndDepth();
++    }
++}
++}}
++
+ 
+ #include <iostream>
+ 
+@@ -3499,6 +3560,12 @@
+ 
+ void Tracking::StereoInitialization()
+ {
++    if(mSensor==System::IMU_STEREO && mpSystem->mRig.IsEnabled() &&
++       !mpSystem->mRig.NonOverlapping()) {
++        MonocularInitialization();
++        return;
++    }
++
+     if(mCurrentFrame.N>500)
+     {
+         if (mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
+@@ -3627,7 +3694,7 @@
+ 
+             fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
+ 
+-            if (mSensor == System::IMU_MONOCULAR)
++            if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))
+             {
+                 if(mpImuPreintegratedFromLastKF)
+                 {
+@@ -3645,7 +3712,7 @@
+     }
+     else
+     {
+-        if (((int)mCurrentFrame.mvKeys.size()<=100)||((mSensor == System::IMU_MONOCULAR)&&(mLastFrame.mTimeStamp-mInitialFrame.mTimeStamp>1.0)))
++        if (((int)mCurrentFrame.mvKeys.size()<=100)||(((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))&&(mLastFrame.mTimeStamp-mInitialFrame.mTimeStamp>1.0)))
+         {
+             mbReadyToInitializate = false;
+ 
+@@ -3681,6 +3748,23 @@
+             mInitialFrame.SetPose(Sophus::SE3f());
+             mCurrentFrame.SetPose(Tcw);
+ 
++
++            // Use temporal parallax for a large seed map, but anchor its units
++            // with independently triangulated, calibrated stereo observations.
++            if(mSensor==System::IMU_STEREO && mpSystem->mRig.IsEnabled()) {
++                std::vector<Eigen::Vector3f> points;
++                points.reserve(mvIniP3D.size());
++                for(const cv::Point3f& p:mvIniP3D) points.emplace_back(p.x,p.y,p.z);
++                const auto metric=EstimateMetricRigScale(CollectRigScaleObservations(
++                    mInitialFrame,mCurrentFrame,points,mvIniMatches,
++                    mInitialFrame.GetPose(),mCurrentFrame.GetPose()));
++                if(!metric.valid) {
++                    if(mCurrentFrame.mnId%20==0)
++                        std::cout << "[METRIC-RIG] waiting for observable scale: " << metric.reason << std::endl;
++                    return;
++                }
++            }
++
+             CreateInitialMapMonocular();
+         }
+     }
+@@ -3694,7 +3778,7 @@
+     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
+     KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
+ 
+-    if(mSensor == System::IMU_MONOCULAR)
++    if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))
+         pKFini->mpImuPreintegrated = (IMU::Preintegrated*)(NULL);
+ 
+ 
+@@ -3746,7 +3830,7 @@
+ 
+     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
+     float invMedianDepth;
+-    if(mSensor == System::IMU_MONOCULAR)
++    if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))
+         invMedianDepth = 4.0f/medianDepth; // 4.0f
+     else
+         invMedianDepth = 1.0f/medianDepth;
+@@ -3756,6 +3840,28 @@
+         Verbose::PrintMess("Wrong initialization, reseting...", Verbose::VERBOSITY_QUIET);
+         mpSystem->ResetActiveMap();
+         return;
++    }
++
++
++    if(mSensor==System::IMU_STEREO && mpSystem->mRig.IsEnabled()) {
++        std::vector<Eigen::Vector3f> points(mvIniMatches.size(),Eigen::Vector3f::Zero());
++        for(size_t i=0;i<mvIniMatches.size();++i) {
++            if(mvIniMatches[i]<0) continue;
++            MapPoint* point=pKFini->GetMapPoint(i);
++            if(point) points[i]=point->GetWorldPos();
++        }
++        const auto metric=EstimateMetricRigScale(CollectRigScaleObservations(
++            mInitialFrame,mCurrentFrame,points,mvIniMatches,pKFini->GetPose(),pKFcur->GetPose()));
++        if(!metric.valid) {
++            std::cout << "[METRIC-RIG] rejected post-BA scale: " << metric.reason << std::endl;
++            mpSystem->ResetActiveMap();
++            return;
++        }
++        invMedianDepth=static_cast<float>(metric.metresPerBootstrapUnit);
++        std::cout << "[METRIC-RIG] scale=" << metric.metresPerBootstrapUnit
++                  << " inlier_landmarks=" << metric.inlierLandmarks
++                  << " reprojection_median_px=" << metric.medianReprojectionErrorPixels
++                  << " log_scale_sigma=" << metric.logScaleStdDev << std::endl;
+     }
+ 
+     // Scale initial baseline
+@@ -3775,7 +3881,7 @@
+         }
+     }
+ 
+-    if (mSensor == System::IMU_MONOCULAR)
++    if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))
+     {
+         pKFcur->mPrevKF = pKFini;
+         pKFini->mNextKF = pKFcur;
+@@ -3784,6 +3890,14 @@
+         mpImuPreintegratedFromLastKF = new IMU::Preintegrated(pKFcur->mpImuPreintegrated->GetUpdatedBias(),pKFcur->mImuCalib);
+     }
+ 
++
++    if(mSensor==System::IMU_STEREO && mpSystem->mRig.IsEnabled()) {
++        AddMetricRigObservations(pKFini,mInitialFrame);
++        AddMetricRigObservations(pKFcur,mCurrentFrame);
++        pKFini->UpdateConnections();
++        pKFcur->UpdateConnections();
++        Optimizer::GlobalBundleAdjustemnt(mpAtlas->GetCurrentMap(),20);
++    }
+ 
+     mpLocalMapper->InsertKeyFrame(pKFini);
+     mpLocalMapper->InsertKeyFrame(pKFcur);
+@@ -3840,7 +3954,7 @@
+     //mnLastRelocFrameId = mnLastInitFrameId; // The last relocation KF_id is the current id, because it is the new starting point for new map
+     Verbose::PrintMess("First frame id in map: " + to_string(mnLastInitFrameId+1), Verbose::VERBOSITY_NORMAL);
+     mbVO = false; // Init value for know if there are enough MapPoints in the last KF
+-    if(mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
++    if(mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
+     {
+         mbReadyToInitializate = false;
+     }
+@@ -4170,16 +4284,39 @@
+         }
+         else
+         {
+-            // if(!mbMapUpdated && mState == OK) //  && (mnMatchesInliers>30))
+-            if(!mbMapUpdated) //  && (mnMatchesInliers>30))
++            // A frame prior is not produced by visual-only pose optimization.
++            // Select an optimizer only after its integration/prior inputs exist.
++            const IMU::Preintegrated* frameIntegration = mCurrentFrame.mpImuPreintegratedFrame;
++            const IMU::Preintegrated* keyFrameIntegration = mCurrentFrame.mpImuPreintegrated;
++            const bool hasFrameIntegration = frameIntegration &&
++                    std::isfinite(frameIntegration->dT) && frameIntegration->dT > 0.0f;
++            const bool hasKeyFrameIntegration = keyFrameIntegration &&
++                    std::isfinite(keyFrameIntegration->dT) && keyFrameIntegration->dT > 0.0f;
++            const Frame* previousFrame = mCurrentFrame.mpPrevFrame;
++            // LastFrame currently also reads bias-RW covariance from the
++            // keyframe integration, so that pointer must exist as well.
++            const bool hasFramePrior = previousFrame && previousFrame->mpcpi &&
++                    hasFrameIntegration && hasKeyFrameIntegration;
++            KeyFrame* previousKeyFrame = hasKeyFrameIntegration ? mCurrentFrame.mpLastKeyFrame : nullptr;
++            const bool hasKeyFrameAnchor = previousKeyFrame &&
++                    !previousKeyFrame->isBad() &&
++                    previousKeyFrame->GetMap() == mpAtlas->GetCurrentMap() &&
++                    hasKeyFrameIntegration;
++
++            if(!mbMapUpdated && hasFramePrior)
+             {
+                 Verbose::PrintMess("TLM: PoseInertialOptimizationLastFrame ", Verbose::VERBOSITY_DEBUG);
+-                inliers = Optimizer::PoseInertialOptimizationLastFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
++                inliers = Optimizer::PoseInertialOptimizationLastFrame(&mCurrentFrame);
++            }
++            else if(hasKeyFrameAnchor)
++            {
++                Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
++                inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(&mCurrentFrame);
+             }
+             else
+             {
+-                Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
+-                inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
++                Verbose::PrintMess("TLM: PoseOptimization (inertial prior/integration unavailable)", Verbose::VERBOSITY_DEBUG);
++                inliers = Optimizer::PoseOptimization(&mCurrentFrame);
+             }
+         }
+     }
+--- a/src/LocalMapping.cc
++++ b/src/LocalMapping.cc
+@@ -899,7 +899,10 @@
+             const cv::KeyPoint &kp1 = (mpCurrentKeyFrame -> NLeft == -1) ? mpCurrentKeyFrame->mvKeysUn[idx1]
+                                                                          : (idx1 < mpCurrentKeyFrame -> NLeft) ? mpCurrentKeyFrame -> mvKeys[idx1]
+                                                                                                                : mpCurrentKeyFrame -> mvKeysRight[idx1 - mpCurrentKeyFrame -> NLeft];
+-            const float kp1_ur=mpCurrentKeyFrame->mvuRight[idx1];
++            // Rectified disparity exists only for the single-camera stereo model.
++            // General two-camera indices are pooled; mvuRight is left-sized.
++            const float kp1_ur = !mpCurrentKeyFrame->mpCamera2
++                    ? mpCurrentKeyFrame->mvuRight[idx1] : -1.0f;
+             bool bStereo1 = (!mpCurrentKeyFrame->mpCamera2 && kp1_ur>=0);
+             const bool bRight1 = (mpCurrentKeyFrame -> NLeft == -1 || idx1 < mpCurrentKeyFrame -> NLeft) ? false
+                                                                                                          : true;
+@@ -908,7 +911,8 @@
+                                                             : (idx2 < pKF2 -> NLeft) ? pKF2 -> mvKeys[idx2]
+                                                                                      : pKF2 -> mvKeysRight[idx2 - pKF2 -> NLeft];
+ 
+-            const float kp2_ur = pKF2->mvuRight[idx2];
++            const float kp2_ur = !pKF2->mpCamera2
++                    ? pKF2->mvuRight[idx2] : -1.0f;
+             bool bStereo2 = (!pKF2->mpCamera2 && kp2_ur>=0);
+             const bool bRight2 = (pKF2 -> NLeft == -1 || idx2 < pKF2 -> NLeft) ? false
+                                                                                : true;
+@@ -1369,7 +1373,15 @@
+                 {
+                     if(!mbMonocular)
+                     {
+-                        if(pKF->mvDepth[i]>pKF->mThDepth || pKF->mvDepth[i]<0)
++                        // General stereo stores depth at the left feature only.
++                        // A pooled right observation refers to that depth through
++                        // its stereo correspondence, never through its pooled index.
++                        int depthIndex = static_cast<int>(i);
++                        if(pKF->NLeft != -1 && depthIndex >= pKF->NLeft)
++                            depthIndex = pKF->mvRightToLeftMatch[depthIndex - pKF->NLeft];
++                        if(depthIndex < 0)
++                            continue; // no stereo depth for this right feature
++                        if(pKF->mvDepth[depthIndex]>pKF->mThDepth || pKF->mvDepth[depthIndex]<0)
+                             continue;
+                     }
+ 
+--- a/src/ORBmatcher.cc
++++ b/src/ORBmatcher.cc
+@@ -1086,6 +1086,7 @@
+                         const cv::KeyPoint &kp2 = (pKF2 -> NLeft == -1) ? pKF2->mvKeysUn[bestIdx2]
+                                                                         : (bestIdx2 < pKF2 -> NLeft) ? pKF2 -> mvKeys[bestIdx2]
+                                                                                                      : pKF2 -> mvKeysRight[bestIdx2 - pKF2 -> NLeft];
++                        vbMatched2[bestIdx2]=true;
+                         vMatches12[idx1]=bestIdx2;
+                         nmatches++;
+ 
+@@ -1274,7 +1275,10 @@
+                 if(!sbExternalKp && (kpLevel<nPredictedLevel-1 || kpLevel>nPredictedLevel))
+                     continue;
+ 
+-                if(pKF->mvuRight[idx]>=0)
++                // Rectified disparity belongs only to the single-camera stereo path.
++                // Dual-camera candidates use their own camera projection above; a
++                // right-local idx must never index the left-only mvuRight array.
++                if(!pKF->mpCamera2 && pKF->mvuRight[idx]>=0)
+                 {
+                     // Check reprojection error in stereo
+                     const float &kpx = kp.pt.x;
+--- a/src/Optimizer.cc
++++ b/src/Optimizer.cc
+@@ -2210,6 +2210,13 @@
+     {
+         if(!vpMatches1[i])
+             continue;
++        // This solver's pose and projection edges refer to camera0. A pooled
++        // camera1 feature must not index camera0's keypoints or constrain its ray.
++        if(pKF1->NLeft != -1 && i >= pKF1->NLeft)
++        {
++            vpMatches1[i] = nullptr;
++            continue;
++        }
+ 
+         MapPoint* pMP1 = vpMapPoints1[i];
+         MapPoint* pMP2 = vpMatches1[i];
+@@ -2217,7 +2224,15 @@
+         const int id1 = 2*i+1;
+         const int id2 = 2*(i+1);
+ 
+-        const int i2 = get<0>(pMP2->GetIndexInKeyFrame(pKF2));
++        const auto indices2 = pMP2->GetIndexInKeyFrame(pKF2);
++        const int i2 = get<0>(indices2);
++        // A camera1-only observation is not a camera0 measurement. Keep the
++        // existing missing-neighbor observation path for genuinely absent KFs.
++        if(pKF2->mpCamera2 && i2 < 0 && get<1>(indices2) >= 0)
++        {
++            vpMatches1[i] = nullptr;
++            continue;
++        }
+ 
+         Eigen::Vector3f P3D1c;
+         Eigen::Vector3f P3D2c;
+@@ -2314,9 +2329,10 @@
+         }
+         else
+         {
+-            float invz = 1/P3D2c(2);
+-            float x = P3D2c(0)*invz;
+-            float y = P3D2c(1)*invz;
++            // The inverse Sim3 edge predicts image pixels, not X/Z,Y/Z.
++            const Eigen::Vector2f uv2 = pKF2->mpCamera->project(P3D2c);
++            const float x = uv2.x();
++            const float y = uv2.y();
+ 
+             obs2 << x, y;
+             kpUn2 = cv::KeyPoint(cv::Point2f(x, y), pMP2->mnTrackScaleLevel);
+@@ -3886,7 +3902,7 @@
+ 
+     const int nExpectedSize = (vpAdjustKF.size()+vpFixedKF.size())*vpMPs.size();
+ 
+-    vector<ORB_SLAM3::EdgeSE3ProjectXYZ*> vpEdgesMono;
++    vector<ORB_SLAM3::EdgeSE3ProjectXYZToBody*> vpEdgesMono;
+     vpEdgesMono.reserve(nExpectedSize);
+ 
+     vector<KeyFrame*> vpEdgeKFMono;
+@@ -3928,77 +3944,70 @@
+         const map<KeyFrame*,tuple<int,int>> observations = pMPi->GetObservations();
+         int nEdges = 0;
+         //SET EDGES
+-        for(map<KeyFrame*,tuple<int,int>>::const_iterator mit=observations.begin(); mit!=observations.end(); mit++)
+-        {
+-            KeyFrame* pKF = mit->first;
+-            if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForMerge != pMainKF->mnId || !pKF->GetMapPoint(get<0>(mit->second)))
++        for(const auto& observation : observations)
++        {
++            KeyFrame* pKF = observation.first;
++            if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForMerge != pMainKF->mnId)
+                 continue;
+ 
+-            nEdges++;
+-
+-            const cv::KeyPoint &kpUn = pKF->mvKeysUn[get<0>(mit->second)];
+-
+-            if(pKF->mvuRight[get<0>(mit->second)]<0) //Monocular
+-            {
+-                mpObsMPs[pMPi]++;
+-                Eigen::Matrix<double,2,1> obs;
+-                obs << kpUn.pt.x, kpUn.pt.y;
+-
+-                ORB_SLAM3::EdgeSE3ProjectXYZ* e = new ORB_SLAM3::EdgeSE3ProjectXYZ();
+-
+-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
+-                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
+-                e->setMeasurement(obs);
+-                const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+-                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+-
+-                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+-                e->setRobustKernel(rk);
+-                rk->setDelta(thHuber2D);
+-
+-                e->pCamera = pKF->mpCamera;
+-
+-                optimizer.addEdge(e);
+-
+-                vpEdgesMono.push_back(e);
+-                vpEdgeKFMono.push_back(pKF);
+-                vpMapPointEdgeMono.push_back(pMPi);
+-
+-                mpObsKFs[pKF]++;
+-            }
+-            else // RGBD or Stereo
+-            {
+-                mpObsMPs[pMPi]+=2;
+-                Eigen::Matrix<double,3,1> obs;
+-                const float kp_ur = pKF->mvuRight[get<0>(mit->second)];
+-                obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
+-
+-                g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
+-
+-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
+-                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
+-                e->setMeasurement(obs);
+-                const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+-                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
+-                e->setInformation(Info);
+-
+-                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+-                e->setRobustKernel(rk);
+-                rk->setDelta(thHuber3D);
+-
+-                e->fx = pKF->fx;
+-                e->fy = pKF->fy;
+-                e->cx = pKF->cx;
+-                e->cy = pKF->cy;
+-                e->bf = pKF->mbf;
+-
+-                optimizer.addEdge(e);
+-
+-                vpEdgesStereo.push_back(e);
+-                vpEdgeKFStereo.push_back(pKF);
+-                vpMapPointEdgeStereo.push_back(pMPi);
+-
+-                mpObsKFs[pKF]++;
++            for(int cam=0; cam<(pKF->mpCamera2 ? 2 : 1); ++cam)
++            {
++                const int index = cam ? get<1>(observation.second) : get<0>(observation.second);
++                if(index < 0 || pKF->GetMapPoint(index) != pMPi)
++                    continue;
++                const cv::KeyPoint& kp = cam ? pKF->mvKeysRight[index-pKF->NLeft]
++                                            : pKF->mvKeysUn[index];
++                const float invSigma2 = pKF->mvInvLevelSigma2[kp.octave];
++                ++nEdges;
++                ++mpObsKFs[pKF];
++
++                if(!pKF->mpCamera2 && pKF->mvuRight[index] >= 0)
++                {
++                    mpObsMPs[pMPi] += 2;
++                    Eigen::Vector3d obs(kp.pt.x, kp.pt.y, pKF->mvuRight[index]);
++                    auto* e = new g2o::EdgeStereoSE3ProjectXYZ();
++                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
++                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
++                    e->setMeasurement(obs);
++                    e->setInformation(Eigen::Matrix3d::Identity()*invSigma2);
++                    auto* rk = new g2o::RobustKernelHuber();
++                    e->setRobustKernel(rk);
++                    rk->setDelta(thHuber3D);
++                    e->fx = pKF->fx;
++                    e->fy = pKF->fy;
++                    e->cx = pKF->cx;
++                    e->cy = pKF->cy;
++                    e->bf = pKF->mbf;
++                    optimizer.addEdge(e);
++                    vpEdgesStereo.push_back(e);
++                    vpEdgeKFStereo.push_back(pKF);
++                    vpMapPointEdgeStereo.push_back(pMPi);
++                }
++                else
++                {
++                    ++mpObsMPs[pMPi];
++                    Eigen::Vector2d obs(kp.pt.x, kp.pt.y);
++                    auto* e = new ORB_SLAM3::EdgeSE3ProjectXYZToBody();
++                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
++                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
++                    e->setMeasurement(obs);
++                    e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
++                    auto* rk = new g2o::RobustKernelHuber();
++                    e->setRobustKernel(rk);
++                    rk->setDelta(thHuber2D);
++                    e->mTrl = g2o::SE3Quat();
++                    e->pCamera = pKF->mpCamera;
++                    if(cam)
++                    {
++                        const Sophus::SE3f Trl = pKF->GetRelativePoseTrl();
++                        e->mTrl = g2o::SE3Quat(Trl.unit_quaternion().cast<double>(), Trl.translation().cast<double>());
++                        e->pCamera = pKF->mpCamera2;
++                    }
++                    optimizer.addEdge(e);
++                    vpEdgesMono.push_back(e);
++                    vpEdgeKFMono.push_back(pKF);
++                    vpMapPointEdgeMono.push_back(pMPi);
++                }
+             }
+         }
+     }
+@@ -4023,7 +4032,7 @@
+         int badMonoMP = 0, badStereoMP = 0;
+         for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
+         {
+-            ORB_SLAM3::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
++            ORB_SLAM3::EdgeSE3ProjectXYZToBody* e = vpEdgesMono[i];
+             MapPoint* pMP = vpMapPointEdgeMono[i];
+ 
+             if(pMP->isBad())
+@@ -4068,7 +4077,7 @@
+     int badMonoMP = 0, badStereoMP = 0;
+     for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
+     {
+-        ORB_SLAM3::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
++        ORB_SLAM3::EdgeSE3ProjectXYZToBody* e = vpEdgesMono[i];
+         MapPoint* pMP = vpMapPointEdgeMono[i];
+ 
+         if(pMP->isBad())
+@@ -4128,20 +4137,17 @@
+             continue;
+ 
+         const map<KeyFrame*,tuple<int,int>> observations = pMPi->GetObservations();
+-        for(map<KeyFrame*,tuple<int,int>>::const_iterator mit=observations.begin(); mit!=observations.end(); mit++)
+-        {
+-            KeyFrame* pKF = mit->first;
+-            if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForKF != pMainKF->mnId || !pKF->GetMapPoint(get<0>(mit->second)))
++        for(const auto& observation : observations)
++        {
++            KeyFrame* pKF = observation.first;
++            if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForMerge != pMainKF->mnId)
+                 continue;
+-
+-            if(pKF->mvuRight[get<0>(mit->second)]<0) //Monocular
+-            {
+-                mpObsFinalKFs[pKF]++;
+-            }
+-            else // RGBD or Stereo
+-            {
+-                mpObsFinalKFs[pKF]++;
+-            }
++            const int leftIndex = get<0>(observation.second);
++            const int rightIndex = get<1>(observation.second);
++            if(leftIndex >= 0 && pKF->GetMapPoint(leftIndex) == pMPi)
++                ++mpObsFinalKFs[pKF];
++            if(pKF->mpCamera2 && rightIndex >= 0 && pKF->GetMapPoint(rightIndex) == pMPi)
++                ++mpObsFinalKFs[pKF];
+         }
+     }
+ 
+@@ -4163,7 +4169,7 @@
+ 
+         for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
+         {
+-            ORB_SLAM3::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
++            ORB_SLAM3::EdgeSE3ProjectXYZToBody* e = vpEdgesMono[i];
+             MapPoint* pMP = vpMapPointEdgeMono[i];
+             KeyFrame* pKFedge = vpEdgeKFMono[i];
+ 
+@@ -4584,70 +4590,56 @@
+         const map<KeyFrame*,tuple<int,int>> observations = pMP->GetObservations();
+ 
+         // Create visual constraints
+-        for(map<KeyFrame*,tuple<int,int>>::const_iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+-        {
+-            KeyFrame* pKFi = mit->first;
+-
+-            if (!pKFi)
++        for(const auto& observation : observations)
++        {
++            KeyFrame* pKFi = observation.first;
++            if(!pKFi || pKFi->isBad())
+                 continue;
+-
+-            if ((pKFi->mnBALocalForKF!=pCurrKF->mnId) && (pKFi->mnBAFixedForKF!=pCurrKF->mnId))
++            if(pKFi->mnBALocalForKF != pCurrKF->mnId && pKFi->mnBAFixedForKF != pCurrKF->mnId)
+                 continue;
+-
+-            if (pKFi->mnId>maxKFid){
++            if(pKFi->mnId > maxKFid || !optimizer.vertex(id) || !optimizer.vertex(pKFi->mnId))
+                 continue;
+-            }
+-
+-
+-            if(optimizer.vertex(id)==NULL || optimizer.vertex(pKFi->mnId)==NULL)
+-                continue;
+-
+-            if(!pKFi->isBad())
+-            {
+-                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[get<0>(mit->second)];
+-
+-                if(pKFi->mvuRight[get<0>(mit->second)]<0) // Monocular observation
++
++            for(int cam=0; cam<(pKFi->mpCamera2 ? 2 : 1); ++cam)
++            {
++                const int index = cam ? get<1>(observation.second) : get<0>(observation.second);
++                if(index < 0)
++                    continue;
++                const cv::KeyPoint& kp = cam ? pKFi->mvKeysRight[index-pKFi->NLeft]
++                                            : pKFi->mvKeysUn[index];
++                const float invSigma2 = pKFi->mvInvLevelSigma2[kp.octave];
++
++                if(!pKFi->mpCamera2 && pKFi->mvuRight[index] >= 0)
+                 {
+-                    Eigen::Matrix<double,2,1> obs;
+-                    obs << kpUn.pt.x, kpUn.pt.y;
+-
+-                    EdgeMono* e = new EdgeMono();
++                    Eigen::Vector3d obs(kp.pt.x, kp.pt.y, pKFi->mvuRight[index]);
++                    auto* e = new EdgeStereo(0);
+                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
+                     e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
+                     e->setMeasurement(obs);
+-                    const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
++                    e->setInformation(Eigen::Matrix3d::Identity()*invSigma2);
++                    auto* rk = new g2o::RobustKernelHuber();
++                    e->setRobustKernel(rk);
++                    rk->setDelta(thHuberStereo);
++                    optimizer.addEdge(e);
++                    vpEdgesStereo.push_back(e);
++                    vpEdgeKFStereo.push_back(pKFi);
++                    vpMapPointEdgeStereo.push_back(pMP);
++                }
++                else
++                {
++                    Eigen::Vector2d obs(kp.pt.x, kp.pt.y);
++                    auto* e = new EdgeMono(cam);
++                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
++                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
++                    e->setMeasurement(obs);
+                     e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+-
+-                    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
++                    auto* rk = new g2o::RobustKernelHuber();
+                     e->setRobustKernel(rk);
+                     rk->setDelta(thHuberMono);
+                     optimizer.addEdge(e);
+                     vpEdgesMono.push_back(e);
+                     vpEdgeKFMono.push_back(pKFi);
+                     vpMapPointEdgeMono.push_back(pMP);
+-                }
+-                else // stereo observation
+-                {
+-                    const float kp_ur = pKFi->mvuRight[get<0>(mit->second)];
+-                    Eigen::Matrix<double,3,1> obs;
+-                    obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
+-
+-                    EdgeStereo* e = new EdgeStereo();
+-
+-                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
+-                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
+-                    e->setMeasurement(obs);
+-                    const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
+-                    e->setInformation(Eigen::Matrix3d::Identity()*invSigma2);
+-
+-                    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+-                    e->setRobustKernel(rk);
+-                    rk->setDelta(thHuberStereo);
+-
+-                    optimizer.addEdge(e);
+-                    vpEdgesStereo.push_back(e);
+-                    vpEdgeKFStereo.push_back(pKFi);
+-                    vpMapPointEdgeStereo.push_back(pMP);
+                 }
+             }
+         }
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -411,3 +411,8 @@
+             Examples_old/Stereo-Inertial/stereo_inertial_realsense_D435i.cc)
+     target_link_libraries(stereo_inertial_realsense_D435i_old ${PROJECT_NAME})
+ endif()
++
++# Calibrated overlapping fisheye rig with metric temporal initialization.
++add_executable(stereo_lamaria_euroc Examples/Stereo-Inertial/stereo_lamaria_euroc.cc)
++target_link_libraries(stereo_lamaria_euroc ${PROJECT_NAME})
++set_target_properties(stereo_lamaria_euroc PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo-Inertial)
