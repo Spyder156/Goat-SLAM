@@ -8,5 +8,24 @@
   "contract": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_periodic_vi_20261003/tests/exact_solver/result.json",
   "contract_passed": true,
   "replays_at_creation": "Not yet launched; parent harness owns configured Medium and Long runs",
-  "build_manifest": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_periodic_vi_20261003/build_manifest.json"
+  "build_manifest": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/orbslam3_lamaria_periodic_vi_20261003/build_manifest.json",
+  "completed_pair": {
+    "suite": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003",
+    "medium": {
+      "replay_exit": 0,
+      "score2d": null,
+      "score_status": "official CP alignment failed",
+      "retained_maps": 6,
+      "proposals": 18,
+      "accepted": 0
+    },
+    "long": {
+      "replay_exit": 0,
+      "score2d": 37.63091702598581,
+      "retained_maps": 13,
+      "proposals": 25,
+      "accepted": 0
+    },
+    "interpretation": "No accepted periodic fixed-VI commits reached live state; not a continuity winner."
+  }
 }
