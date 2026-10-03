@@ -1,0 +1,104 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -318,6 +318,8 @@
+   list(APPEND CERES_COMPILE_OPTIONS CERES_NO_SUITESPARSE)
+ endif (SUITESPARSE)
+ 
++# Match Ubuntu Ceres2.2.0 build feature configuration.
++set(SuiteSparse_Partition_FOUND FALSE)
+ if (NOT SuiteSparse_Partition_FOUND)
+   list (APPEND CERES_COMPILE_OPTIONS CERES_NO_CHOLMOD_PARTITION)
+ endif (NOT SuiteSparse_Partition_FOUND)
+--- a/internal/ceres/CMakeLists.txt
++++ b/internal/ceres/CMakeLists.txt
+@@ -598,3 +598,8 @@
+ 
+   add_subdirectory(autodiff_benchmarks)
+ endif (BUILD_BENCHMARKS)
++
++# Isolated LaMAria kernel contract/benchmark; not installed or exported.
++add_executable(lamaria_matvec_benchmark lamaria_matvec_benchmark.cc)
++target_include_directories(lamaria_matvec_benchmark PRIVATE ${Ceres_SOURCE_DIR}/internal)
++target_link_libraries(lamaria_matvec_benchmark PRIVATE ceres_static ${CERES_LIBRARY_PRIVATE_DEPENDENCIES})
+--- a/internal/ceres/block_random_access_sparse_matrix.cc
++++ b/internal/ceres/block_random_access_sparse_matrix.cc
+@@ -38,6 +38,7 @@
+ 
+ #include "ceres/internal/export.h"
+ #include "ceres/parallel_vector_ops.h"
++#include "ceres/parallel_for.h"
+ #include "ceres/triplet_sparse_matrix.h"
+ #include "ceres/types.h"
+ #include "glog/logging.h"
+@@ -128,7 +129,12 @@
+   const auto values = bsm_->values();
+   const int num_blocks = blocks_.size();
+ 
+-  for (int row_block_id = 0; row_block_id < num_blocks; ++row_block_id) {
++  // No mutable object scratch: separate concurrent multiplies remain safe.
++  // Each partition owns a complete output because upper-triangle cells write
++  // both row and column blocks. Fixed partitions/reduction order make worker
++  // scheduling irrelevant to the floating-point result.
++  const auto multiply_rows = [&](int begin, int end, double* output) {
++    for (int row_block_id = begin; row_block_id < end; ++row_block_id) {
+     const auto& row_block = bs->rows[row_block_id];
+     const int row_block_size = row_block.block.size;
+     const int row_block_pos = row_block.block.position;
+@@ -143,7 +149,7 @@
+           row_block_size,
+           col_block_size,
+           x + col_block_pos,
+-          y + row_block_pos);
++          output + row_block_pos);
+       if (col_block_id == row_block_id) {
+         continue;
+       }
+@@ -157,9 +163,45 @@
+           row_block_size,
+           col_block_size,
+           x + row_block_pos,
+-          y + col_block_pos);
+-    }
+-  }
++          output + col_block_pos);
++    }
++  }
++  };
++  if (num_threads_ == 1 || num_blocks < 2 || bsm_->num_nonzeros() < 4096) {
++    multiply_rows(0, num_blocks, y);
++    return;
++  }
++  const int partitions = std::min(num_threads_, num_blocks);
++  const int dimension = num_rows();
++  std::vector<int64_t> cumulative(num_blocks + 1, 0);
++  for (int row = 0; row < num_blocks; ++row) {
++    cumulative[row + 1] = cumulative[row];
++    if (!bs->rows[row].cells.empty()) {
++      const auto& cell = bs->rows[row].cells.back();
++      cumulative[row + 1] = int64_t(cell.position) +
++          int64_t(blocks_[row].size) * blocks_[cell.block_id].size;
++    }
++  }
++  std::vector<int> boundaries(partitions + 1, 0);
++  boundaries.back() = num_blocks;
++  for (int part = 1; part < partitions; ++part) {
++    boundaries[part] = std::lower_bound(cumulative.begin(), cumulative.end(),
++        cumulative.back() * part / partitions) - cumulative.begin();
++  }
++  std::vector<double> partial(size_t(partitions) * dimension, 0.0);
++  ParallelFor(context_, 0, partitions, num_threads_, [&](int part) {
++    multiply_rows(boundaries[part], boundaries[part + 1],
++                  partial.data() + size_t(part) * dimension);
++  });
++  // This method accumulates into an arbitrary existing y, rather than clearing
++  // it. Each final coordinate has one writer and a stable summation order.
++  ParallelFor(context_, 0, dimension, num_threads_, [&](int index) {
++    double total = y[index];
++    for (int part = 0; part < partitions; ++part) {
++      total += partial[size_t(part) * dimension + index];
++    }
++    y[index] = total;
++  });
+ }
+ 
+ }  // namespace ceres::internal
