@@ -14,7 +14,24 @@ Short's remaining 19.80 points have a different explanation: all 14 CPs are reco
 
 The official reproduced Aria SLAM category scores on the leaderboard checked on 2026-10-03 are Short 90.7, Medium 78.5, Long 70.9, Lowlight 84.2, and Moving 55.0. These are category results, whereas our 80.20 is a local result on one Additional Set sequence. We must not subtract them and announce a leaderboard gap or a win. A like-for-like suite comes later. [Official LaMAria leaderboard](https://lamaria.ethz.ch/leaderboard).
 
-### Continuity batch update and next decision
+### Latest decision: BabyFeatures SOS implemented and tested on Long
+
+E39 completed the user's requested SOS experiment on `experiments/BabyFeats`.
+Short-lived tracks are maintained passively and only enter estimation after
+ordinary tracking fails. One retained map survives all 15 SOS episodes after
+a startup reset, covering 99.38% of native inputs. Score2D is 43.729292 versus
+native v2 34.458901. This meets the immediate continuity objective in one replay,
+but only four of 27 recovered CPs are within 1 m and a 1.619 m final step remains.
+Historical Long 49.881534 stays preserved; Short 80.199161 is untouched.
+
+Discuss the full-route and SOS diagnostics before another experiment. Candidate
+next work is the backend state/history discontinuity exposed by the surviving
+map, plus an authorized repeat/Medium transfer to establish reliability. Keep
+the normal estimator protected. Do not silently broaden this into threshold
+relaxation, knot tuning, or wholesale frontend changes. See
+`docs/BABYFEATURES_LONG_20261003.md`; the following batch findings are historical.
+
+### Earlier continuity batch and its recovery finding
 
 E37–E38 are now complete: six full candidate replays and one unchanged Medium
 control. Direct recovery, landmark memory and map-local fixed-intrinsic VI are

@@ -1,6 +1,6 @@
 # LaMAria experiment ledger and research backlog
 
-Status recorded on 2026-10-03. Read GOAL.md first for the objective and ROADMAP.md for the implementation order. This file records what actually happened, including negative results, correctness-only tests, incomplete runs, and ideas that have not been tested. It is deliberately separate from the roadmap so that a hypothesis cannot quietly become an established result.
+Status recorded on 2026-10-04. Read GOAL.md first for the objective and ROADMAP.md for the implementation order. This file records what actually happened, including negative results, correctness-only tests, incomplete runs, and ideas that have not been tested. It is deliberately separate from the roadmap so that a hypothesis cannot quietly become an established result.
 
 The project is Raghav's ORB-SLAM3 fork adapted to native dual-camera Aria Fisheye624 images and calibrated IMU. The goal is a reliable, accurate metric SLAM system that can outperform Meta/Aria under the actual LaMAria benchmark protocol. The best observed result below, **80.199161 on one full Short sequence**, is promising; it is not a category-average result or a leaderboard victory.
 
@@ -57,6 +57,7 @@ Scores were checked against saved `lamaria_score/scores.json` artifacts when thi
 | S21 | Medium, periodic fixed VI | Unscorable | — | — | — | 6 | No official CP alignment |
 | S22 | Long, periodic fixed VI | 37.630917 | 16/27 | 11/27 | 3545/6118 | 13 | Above native v2; below historical Long; still fragmented |
 | S23 | Medium, unchanged v2 repeat | 63.086620 | 13/18 | 12/18 | 2497/4083 | 4 | Reproduces saved v2 score; no estimator change |
+| S24 | Long, BabyFeatures SOS | **43.729292** | **27/27** | 4/27 | 6078/6118 | **1** | No split after startup; 15 SOS returns; residual jumps and metre-scale error remain |
 
 The chronological history is not a monotonic leaderboard ladder. Different sequences, coverage, feature graphs, and optimizer budgets matter. Do not compare Long 49.88 with Short 80.20 as the effect of one change.
 
@@ -90,6 +91,7 @@ S20 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_conti
 S21 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/periodic_vi_medium/runs/periodic_vi_medium_medium_full
 S22 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/periodic_vi_long/runs/periodic_vi_long_long_full
 S23 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/frozen_v2_repeat_medium/runs/frozen_v2_repeat_medium_medium_full
+S24 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/runs/lamaria_babyfeats_long_20261003_long_full
 ```
 
 ## 3. The experiments, one by one
@@ -675,6 +677,46 @@ and one repeat does not establish variance. It does confirm the broad Medium
 failure location and does not explain away B's 45.87 regression. No candidate
 was retried or selected for a favorable run. Stop for discussion before another
 implementation family; knot-based refinement remains deferred.
+
+### E39. BabyFeatures SOS, one full Long replay
+
+**Tried:** on `experiments/BabyFeats`, keep a passive short-track cache from the
+existing features. After ordinary tracking fails, jointly optimize temporary
+native-camera points and recent pose/velocity/bias states with IMU. Baby factors
+do not enter healthy tracking. Verified three-view tracks can seed a temporal
+keyframe in the same map, followed by actual ordinary-map tracking confirmation.
+Normal association/reprojection gates, native Long settings, and frozen v2
+products were preserved. Fourteen native numerical solver checks passed.
+
+**Positive continuity result:** the full 35,842-frame replay exited normally.
+After one startup reset, one retained map covered 35,619 consecutive inputs
+(99.377825%), from native 163.499314 to 1944.399295 s. The first 223 inputs are
+absent from the final trajectory; no gap filling or independent-map stitching
+was used. All 15 SOS episodes returned to normal tracking, with 72 accepted
+Baby updates and 13 promotions totalling 1,648 landmarks. All 72 SOS poses reached
+the scored export, still labelled as coasting rather than mature tracking.
+
+**Mixed accuracy result:** S24 scored **43.729292**, +9.270391 over native v2 S16
+(34.458901, five maps), but below historical Long S01 (49.881534, different
+starting calibration). All 27 CPs were recovered, but only four were within 1 m.
+Associated horizontal trajectory error has median 1.896 m and RMSE 2.933 m.
+The official CP Sim3 scale is 1.008174. A 4.276 m online step at native
+1607.199295 s shrinks to **1.619 m in the final export**, so map survival is not
+equivalent to a smooth or accurate trajectory. Thirteen return-window
+refinements succeeded; two lacked history after backend cache invalidation.
+
+**Attribution limits:** this is one replay, not a repeatability result. Passive
+matching changes asynchronous scheduling; this run survived the saved v2's
+first split before the first Baby solve. Keeping a single map also enabled
+29 inherited periodic calibration trials, four accepted. The score is the
+result of the complete pipeline; it is not an isolated Baby-factor accuracy
+gain. No Short or Medium Baby run was performed, and no frozen baseline was
+replaced. Stop here for discussion before another implementation family.
+
+Full report and exact evidence: `docs/BABYFEATURES_LONG_20261003.md` and
+`docs/BABYFEATURES_LONG_20261003.json`. Diagnostic PNGs include the full evaluated
+route, map continuity, first-SOS camera views, and the remaining late SOS jump.
+No new full Rerun was rendered for this fast experiment.
 
 ## 4. What these results establish and what they do not
 

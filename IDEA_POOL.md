@@ -1,11 +1,13 @@
 # Idea pool: keeping Goat-SLAM connected and accurate
 
-Updated: **2026-10-03**.
+Updated: **2026-10-04**.
 
 This is a living collection of hypotheses and design discussions, not a list of
 proven capabilities. The latest request authorizes **one BabyFeatures SOS
-implementation and a full Long experiment on `experiments/BabyFeats`**. Preserve
-the frozen v2 implementation; record results separately when available.
+implementation and a full Long experiment on `experiments/BabyFeats`**. That
+experiment is now complete: improved map survival, with accuracy still limited.
+The frozen v2 implementation is preserved. Exact results are E39 in
+`EXPERIMENTS.md` and `docs/BABYFEATURES_LONG_20261003.md`.
 
 ## Direction and relationship to the other documents
 
@@ -28,8 +30,14 @@ to accepting returning map observations, but is not the whole prevention plan.
 
 ## I01. BabyFeatures: visual motion support before permanent landmarks
 
-**Origin:** user proposal. **Status:** implementation in progress; no result yet.
-**Priority:** the authorized Long continuity experiment.
+**Origin:** user proposal. **Status:** implemented and tested once on full Long.
+**Result:** one retained map after a startup reset, 15/15 SOS returns, 99.38%
+native pose coverage. Score2D 43.729292 versus native v2 34.458901; historical
+Long 49.881534 remains higher. All 27 CPs recovered, only four within 1 m.
+One 1.619 m final pose jump remains. This is a positive continuity result,
+not a claim that accuracy or repeatability is solved. The implementation uses
+at most eight frames, so the full-interval smoothing below remains an aspiration
+for longer gaps. Review diagnostics before choosing the next experiment.
 
 ### The idea
 
@@ -300,7 +308,8 @@ already available, likely failure modes, and the smallest decisive future
 comparison. Link measured results into `EXPERIMENTS.md` when work is actually
 performed. Never turn a proposal into an implementation claim or score promise.
 
-Latest decision: **implement and test I01 on Long in `experiments/BabyFeats`.
-Track passively throughout, use BabyFeature constraints only during SOS, preserve
-healthy v2 estimation, and report continuity and score without inventing poses
-or joining unrelated map origins.**
+Latest completed action: **I01 implemented and tested once on full Long in
+`experiments/BabyFeats`**. Passive tracks, SOS-only constraints, and guarded
+same-map promotion kept the retained map connected. Review E39 and its
+diagnostics before choosing another experiment. No poses or inter-map
+registrations were invented; frozen v2 estimation remains preserved separately.

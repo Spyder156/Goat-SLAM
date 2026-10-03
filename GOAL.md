@@ -60,10 +60,24 @@ All values below are **local evaluations**, not public leaderboard submissions. 
 | Short, later online rollback variant v3 | 42.5933 | Negative: three maps. A locally correct fix did not yield robust continuity. |
 | Medium, frozen online full calibration v2 transfer | 62.7648 | Three independent maps; 13/18 CPs recovered and 2499/4083 GT associations in the scored map. |
 | Long, frozen v2 with native VRS lens input | 34.4589 | Five independent maps; 15/27 CPs recovered and 3163/6118 GT associations. Worse than the historical Long baseline. |
+| Long, BabyFeatures SOS | 43.7293 | One retained map after startup; 27/27 CPs recovered, four within 1 m. Better continuity than native v2; below historical Long accuracy. |
 
 The three offline arms used one common graph with **1,715,595 initial landmarks and 26,564,121 observations**, re-extracted and matched using SIFT. They started independently from the same source trajectory. Each completed its 30-attempt budget without declaring formal convergence. Those results say that **these tested refinements did not improve the score**; they do not prove global BA can never help. The offline and online experiments differ in their visual graph, execution history and optimization schedule, so their comparison does not isolate a single causal variable.
 
-### Latest continuity batch: no new candidate promoted
+### Latest BabyFeatures result: continuity improved, accuracy still limited
+
+The user's SOS proposal is implemented on `experiments/BabyFeats` and tested
+once on full Long. Passive short tracks enter estimation only after normal
+tracking fails. **All 15 SOS episodes returned to normal map tracking**, and
+one retained map covers **99.38% of native inputs** after a startup reset.
+Score2D is **43.729292**, above native v2 34.458901 but below historical Long
+49.881534. All 27 CPs are recovered; only four are within 1 m. A 1.619 m final
+pose jump remains. The next discussion must separate the demonstrated map
+survival from remaining accuracy and state-correction problems. This single
+replay does not establish repeatability or transfer to Medium/Short. Frozen
+baselines remain untouched. See E39 and `docs/BABYFEATURES_LONG_20261003.md`.
+
+### Earlier continuity batch: no candidate promoted
 
 Three separate candidates were implemented and run fully on Medium/Long:
 direct recovery, accepted-landmark memory, and fixed-intrinsic periodic VI.

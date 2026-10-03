@@ -1,12 +1,33 @@
 # Goat-SLAM handoff
 
-Status: **2026-10-03**. The frozen baseline implementations are published at **Spyder156/Goat-SLAM** with baseline tags. The latest local branch `experiments/map-continuity-20261003` contains three completed continuity candidates (full Medium/Long each) and one unchanged Medium repeat. **No new candidate is promoted.** The unchanged repeat scored 63.086620 Medium; historical Long 49.881534 remains stronger than all new Long arms. The batch is finished, with no replay pending. Stop for discussion of the recovery handoff before further experiments. See `docs/CONTINUITY_EXPERIMENTS_20261003.md` and `docs/CONTINUITY_RESULTS_20261003.json`. Knot refinement remains deferred.
+Status: **2026-10-04**. Current local branch: **`experiments/BabyFeats`**. The
+authorized BabyFeatures SOS implementation and one full Long replay are
+complete: **43.729292 Score2D, one retained map, 99.38% native pose coverage,
+15/15 SOS episodes returning to normal tracking**. One startup reset remains;
+the retained map never splits. All 27 CPs were recovered, but only four are
+within 1 m and a 1.619 m final trajectory step remains. This is a continuity
+improvement, not a new accuracy baseline. Historical Long 49.881534 and frozen
+Short 80.199161 are preserved. No replay is pending. Read
+`docs/BABYFEATURES_LONG_20261003.md` and E39 in `EXPERIMENTS.md`, then discuss
+the result before launching more experiments. Knot refinement remains deferred.
+The earlier six-arm continuity batch and unchanged Medium control remain in
+`docs/CONTINUITY_EXPERIMENTS_20261003.md` / `docs/CONTINUITY_RESULTS_20261003.json`.
 
 ## Start here
 
 Build reliable, complete, metrically accurate dual-fisheye visual-inertial SLAM that beats Meta/Aria under the actual LaMAria protocol. Preserve the strong retained geometry while fixing fragmented trajectories. A good-looking partial map is not success.
 
-**Latest authorization, 2026-10-03:** implement BabyFeatures and run one full Long experiment on `experiments/BabyFeats`. The user's good short-lived correspondences are **tracked passively throughout**, but enter pose estimation **only after normal map tracking fails**. Run their VI bridge during SOS, preserve the established map/metric state, and return to normal estimation once normal map tracking is verified. Original-map reacquisition or explicit promotion of well-supported new landmarks can permit that return. Read `IDEA_POOL.md` for the design and Atlas limits. This supersedes the older discussion-only and no-background-tracking instructions. The isolated implementation is in progress; no new result is claimed yet.
+**Latest authorization, 2026-10-03, completed 2026-10-04:** implement BabyFeatures
+and run one full Long experiment on `experiments/BabyFeats`. Good short-lived
+correspondences are **tracked passively throughout**, but enter pose estimation
+**only after normal map tracking fails**. The implementation supports temporary
+VI constraints, guarded same-map landmark promotion, and verified ordinary
+tracking return. All 72 accepted SOS poses reached the final scored export;
+13 promotions added 1,648 landmarks. Fourteen native solver checks passed.
+Read `IDEA_POOL.md` for the concept and the report for the bounded implementation.
+This supersedes the older discussion-only and no-background-tracking instructions.
+The experimental patch/build profile is `orbslam3_lamaria_babyfeats_20261003`;
+use its custom `build_incremental.py`, not the generic historical builder.
 
 Read `GOAL.md` for the objective and decision rules, `EXPERIMENTS.md` for verified outcomes and exact evidence, and `ROADMAP.md` for hypotheses and proposed work. `README.md` describes the layout; `docs/ARTIFACT_STORAGE.md` explains storage isolation; `docs/LAMARIA_CONTINUITY.txt` describes the historical workflow. **Default launch/build profiles still select the historical continuity baseline, not the best Short v2 candidate. Choose the intended profile explicitly.**
 
