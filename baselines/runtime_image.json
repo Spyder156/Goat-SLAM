@@ -1,0 +1,14 @@
+{
+  "image": "insv/orbslam3:gdb",
+  "image_id": "sha256:e81cd138e05acfdfccb29585a1d8923f33e04d1ce087a461203130befa3524f1",
+  "archive": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/backups/github_initial_20261003/orbslam3-gdb.tar.gz",
+  "archive_sha256": "7d7aab9118349b4fa784bbfeebcc8b3c3c2eccbb45f722dd164aa2a9466d6595",
+  "archive_bytes": 403082735,
+  "restore": [
+    "docker",
+    "load",
+    "-i",
+    "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/backups/github_initial_20261003/orbslam3-gdb.tar.gz"
+  ],
+  "published_to_github": false
+}
