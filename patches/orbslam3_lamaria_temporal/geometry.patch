@@ -1,0 +1,1826 @@
+--- a/src/Frame.cc
++++ b/src/Frame.cc
+@@ -17,6 +17,7 @@
+ */
+ 
+ #include "Frame.h"
++#include <algorithm>
+ #include <cstdio>
+ #include <cstdlib>
+ #include "Fisheye624.h"
+@@ -41,6 +42,37 @@
+ // distance window derives from a single level and the ORB-derived
+ // [0.8*min, 1.2*max] frustum gate rejects points on modest distance change.
+ static const bool sbExternalKpFrustum = (getenv("KP_DIR") != nullptr);
++
++
++// Diagnostic-only counters. No visibility decision or projection is changed.
++namespace {
++struct FrustumAudit {
++    unsigned long frame = 0;
++    double time = 0;
++    bool initialized = false;
++    int counts[2][5] = {};
++    int bypassed_distance[2] = {};
++};
++void auditFrustum(const Frame& frame, int camera, int reason, bool distanceOutside=false) {
++    static const bool enabled = std::getenv("LAMARIA_MATCH_DIAGNOSTICS") != nullptr;
++    if (!enabled) return;
++    static thread_local FrustumAudit a;
++    if(a.initialized && a.frame != frame.mnId) {
++        const int accepted = a.counts[0][4]+a.counts[1][4];
++        if(a.frame % 20 == 0 || accepted < 30) {
++            std::fprintf(stderr,
++                "[FRUSTUM_DIAG] {\"frame\":%lu,\"t\":%.9f,\"cam0\":[%d,%d,%d,%d,%d],\"cam1\":[%d,%d,%d,%d,%d],\"distance_bypassed\":[%d,%d]}\n",
++                a.frame,a.time,a.counts[0][0],a.counts[0][1],a.counts[0][2],a.counts[0][3],a.counts[0][4],
++                a.counts[1][0],a.counts[1][1],a.counts[1][2],a.counts[1][3],a.counts[1][4],
++                a.bypassed_distance[0],a.bypassed_distance[1]);
++        }
++        a = FrustumAudit();
++    }
++    a.initialized=true; a.frame=frame.mnId; a.time=frame.mTimeStamp;
++    ++a.counts[camera][reason];
++    if(distanceOutside) ++a.bypassed_distance[camera];
++}
++}
+ 
+ long unsigned int Frame::nNextId=0;
+ bool Frame::mbInitialComputations=true;
+@@ -455,7 +487,29 @@
+             for(int i=0;i<n;i++)
+                 K.emplace_back(xy[2*i], xy[2*i+1], 31.f, 0.f, resp[i], 0);
+             Dm = cv::Mat(n, 32, CV_8U, d.data()).clone();
+-            if(flag==0) monoLeft = n; else monoRight = n;
++            // ORB's overlap contract: [0, mono) is outside the overlap;
++            // [mono, N) is eligible for calibrated stereo triangulation.
++            // Keep keypoint and descriptor order identical when partitioning.
++            int mono = 0;
++            std::vector<int> order;
++            order.reserve(n);
++            for(int i=0; i<n; ++i)
++                if(x1 <= x0 || K[i].pt.x < x0 || K[i].pt.x > x1)
++                    order.push_back(i);
++            mono = static_cast<int>(order.size());
++            for(int i=0; i<n; ++i)
++                if(x1 > x0 && K[i].pt.x >= x0 && K[i].pt.x <= x1)
++                    order.push_back(i);
++            std::vector<cv::KeyPoint> orderedKeys;
++            orderedKeys.reserve(n);
++            cv::Mat orderedDescriptors(n, 32, CV_8U);
++            for(int i=0; i<n; ++i) {
++                orderedKeys.push_back(K[order[i]]);
++                Dm.row(order[i]).copyTo(orderedDescriptors.row(i));
++            }
++            K.swap(orderedKeys);
++            Dm = orderedDescriptors;
++            if(flag==0) monoLeft = mono; else monoRight = mono;
+             if(!announced){
+                 std::cout << "[KP-EXT] external keypoints active: " << kpdir
+                           << " (first frame n=" << n << ")" << std::endl;
+@@ -576,14 +630,14 @@
+         const float &PcZ = Pc(2);
+         const float invz = 1.0f/PcZ;
+         if(PcZ<0.0f)
+-            return false;
++            { auditFrustum(*this, 0, 0); return false; }
+ 
+         const Eigen::Vector2f uv = mpCamera->project(Pc);
+ 
+         if(uv(0)<mnMinX || uv(0)>mnMaxX)
+-            return false;
++            { auditFrustum(*this, 0, 1); return false; }
+         if(uv(1)<mnMinY || uv(1)>mnMaxY)
+-            return false;
++            { auditFrustum(*this, 0, 1); return false; }
+ 
+         pMP->mTrackProjX = uv(0);
+         pMP->mTrackProjY = uv(1);
+@@ -595,7 +649,7 @@
+         const float dist = PO.norm();
+ 
+         if(!sbExternalKpFrustum && (dist<minDistance || dist>maxDistance))
+-            return false;
++            { auditFrustum(*this, 0, 2); return false; }
+ 
+         // Check viewing angle
+         Eigen::Vector3f Pn = pMP->GetNormal();
+@@ -603,7 +657,7 @@
+         const float viewCos = PO.dot(Pn)/dist;
+ 
+         if(viewCos<viewingCosLimit)
+-            return false;
++            { auditFrustum(*this, 0, 3); return false; }
+ 
+         // Predict scale in the image
+         const int nPredictedLevel = pMP->PredictScale(dist,this);
+@@ -619,6 +673,7 @@
+         pMP->mnTrackScaleLevel= nPredictedLevel;
+         pMP->mTrackViewCos = viewCos;
+ 
++        auditFrustum(*this, 0, 4, sbExternalKpFrustum && (dist<minDistance || dist>maxDistance));
+         return true;
+     }
+     else{
+@@ -1197,31 +1252,8 @@
+ }
+ 
+ void Frame::ComputeStereoFishEyeMatches() {
+-    // MONO-RIG: on a non-overlapping (back-to-back) rig the two cameras share no
+-    // field of view at any instant, so every "stereo" match is false. Skip the
+-    // matching and leave the correspondence/depth arrays empty; every downstream
+-    // site already guards on mvLeftToRightMatch[i] != -1, so both cameras then
+-    // contribute purely MONOCULAR observations -- which is correct for this rig.
+-    // Depth comes from triangulating across TIME, not across lenses.
+-    if (Rig::NonOverlappingGlobal()) {
+-        Rig::StageOnce("frame", "non-overlapping rig: cross-camera stereo "
+-                                "matching SKIPPED; both cameras are monocular");
+-        mvLeftToRightMatch = std::vector<int>(Nleft, -1);
+-        mvRightToLeftMatch = std::vector<int>(Nright, -1);
+-        mvDepth = std::vector<float>(Nleft, -1.0f);
+-        mvuRight = std::vector<float>(Nleft, -1);
+-        mvStereo3Dpoints = std::vector<Eigen::Vector3f>(Nleft);
+-        mnCloseMPs = 0;
+-        return;
+-    }
+-
+-    //Speed it up by matching keypoints in the lapping area
+-    vector<cv::KeyPoint> stereoLeft(mvKeys.begin() + monoLeft, mvKeys.end());
+-    vector<cv::KeyPoint> stereoRight(mvKeysRight.begin() + monoRight, mvKeysRight.end());
+-
+-    cv::Mat stereoDescLeft = mDescriptors.rowRange(monoLeft, mDescriptors.rows);
+-    cv::Mat stereoDescRight = mDescriptorsRight.rowRange(monoRight, mDescriptorsRight.rows);
+-
++    // Always publish well-formed empty correspondence/depth arrays, including
++    // frames with no descriptors or too few right candidates for a ratio test.
+     mvLeftToRightMatch = vector<int>(Nleft,-1);
+     mvRightToLeftMatch = vector<int>(Nright,-1);
+     mvDepth = vector<float>(Nleft,-1.0f);
+@@ -1229,29 +1261,49 @@
+     mvStereo3Dpoints = vector<Eigen::Vector3f>(Nleft);
+     mnCloseMPs = 0;
+ 
+-    //Perform a brute force between Keypoint in the left and right image
++    if (Rig::NonOverlappingGlobal()) {
++        Rig::StageOnce("frame", "non-overlapping rig: cross-camera stereo "
++                                "matching SKIPPED; both cameras are monocular");
++        return;
++    }
++
++    if(mDescriptors.empty() || mDescriptorsRight.empty() ||
++       monoLeft < 0 || monoLeft >= mDescriptors.rows ||
++       monoRight < 0 || monoRight > mDescriptorsRight.rows-2)
++        return;
++
++    // Only descriptors in the calibrated overlap region participate.
++    cv::Mat stereoDescLeft = mDescriptors.rowRange(monoLeft, mDescriptors.rows);
++    cv::Mat stereoDescRight = mDescriptorsRight.rowRange(monoRight, mDescriptorsRight.rows);
+     vector<vector<cv::DMatch>> matches;
+-
+     BFmatcher.knnMatch(stereoDescLeft,stereoDescRight,matches,2);
+ 
+-    int nMatches = 0;
+-    int descMatches = 0;
+-
+-    //Check matches using Lowe's ratio
+-    for(vector<vector<cv::DMatch>>::iterator it = matches.begin(); it != matches.end(); ++it){
+-        if((*it).size() >= 2 && (*it)[0].distance < (*it)[1].distance * 0.7){
+-            //For every good match, check parallax and reprojection error to discard spurious matches
+-            Eigen::Vector3f p3D;
+-            descMatches++;
+-            float sigma1 = mvLevelSigma2[mvKeys[(*it)[0].queryIdx + monoLeft].octave], sigma2 = mvLevelSigma2[mvKeysRight[(*it)[0].trainIdx + monoRight].octave];
+-            float depth = mpCamera->TriangulateMatches(mpCamera2,mvKeys[(*it)[0].queryIdx + monoLeft],mvKeysRight[(*it)[0].trainIdx + monoRight],mRlr,mtlr,sigma1,sigma2,p3D);
+-            if(depth > 0.0001f){
+-                mvLeftToRightMatch[(*it)[0].queryIdx + monoLeft] = (*it)[0].trainIdx + monoRight;
+-                mvRightToLeftMatch[(*it)[0].trainIdx + monoRight] = (*it)[0].queryIdx + monoLeft;
+-                mvStereo3Dpoints[(*it)[0].queryIdx + monoLeft] = p3D;
+-                mvDepth[(*it)[0].queryIdx + monoLeft] = depth;
+-                nMatches++;
+-            }
++    // Best descriptor claims are considered first. An unsuccessful geometric
++    // test does not reserve the right feature for that candidate.
++    vector<cv::DMatch> candidates;
++    candidates.reserve(matches.size());
++    for(const auto& neighbors : matches)
++        if(neighbors.size() >= 2 && neighbors[0].distance < neighbors[1].distance*0.7f)
++            candidates.push_back(neighbors[0]);
++    std::stable_sort(candidates.begin(),candidates.end(),
++        [](const cv::DMatch& a,const cv::DMatch& b){ return a.distance < b.distance; });
++
++    for(const cv::DMatch& match : candidates) {
++        const int leftIndex = match.queryIdx + monoLeft;
++        const int rightIndex = match.trainIdx + monoRight;
++        if(mvRightToLeftMatch[rightIndex] != -1)
++            continue;
++
++        Eigen::Vector3f p3D;
++        const float sigma1 = mvLevelSigma2[mvKeys[leftIndex].octave];
++        const float sigma2 = mvLevelSigma2[mvKeysRight[rightIndex].octave];
++        const float depth = mpCamera->TriangulateMatches(mpCamera2,
++            mvKeys[leftIndex],mvKeysRight[rightIndex],mRlr,mtlr,sigma1,sigma2,p3D);
++        if(depth > 0.0001f) {
++            mvLeftToRightMatch[leftIndex] = rightIndex;
++            mvRightToLeftMatch[rightIndex] = leftIndex;
++            mvStereo3Dpoints[leftIndex] = p3D;
++            mvDepth[leftIndex] = depth;
+         }
+     }
+ }
+@@ -1282,7 +1334,7 @@
+ 
+     // Check positive depth
+     if(PcZ<0.0f)
+-        return false;
++        { auditFrustum(*this, bRight ? 1 : 0, 0); return false; }
+ 
+     // Project in image and check it is not outside
+     Eigen::Vector2f uv;
+@@ -1290,9 +1342,9 @@
+     else uv = mpCamera->project(Pc);
+ 
+     if(uv(0)<mnMinX || uv(0)>mnMaxX)
+-        return false;
++        { auditFrustum(*this, bRight ? 1 : 0, 1); return false; }
+     if(uv(1)<mnMinY || uv(1)>mnMaxY)
+-        return false;
++        { auditFrustum(*this, bRight ? 1 : 0, 1); return false; }
+ 
+     // Check distance is in the scale invariance region of the MapPoint
+     const float maxDistance = pMP->GetMaxDistanceInvariance();
+@@ -1301,7 +1353,7 @@
+     const float dist = PO.norm();
+ 
+     if(!sbExternalKpFrustum && (dist<minDistance || dist>maxDistance))
+-        return false;
++        { auditFrustum(*this, bRight ? 1 : 0, 2); return false; }
+ 
+     // Check viewing angle
+     Eigen::Vector3f Pn = pMP->GetNormal();
+@@ -1309,7 +1361,7 @@
+     const float viewCos = PO.dot(Pn) / dist;
+ 
+     if(viewCos<viewingCosLimit)
+-        return false;
++        { auditFrustum(*this, bRight ? 1 : 0, 3); return false; }
+ 
+     // Predict scale in the image
+     const int nPredictedLevel = pMP->PredictScale(dist,this);
+@@ -1329,7 +1381,8 @@
+         pMP->mTrackDepth = Pc_dist;
+     }
+ 
+-    return true;
++    auditFrustum(*this, bRight ? 1 : 0, 4, sbExternalKpFrustum && (dist<minDistance || dist>maxDistance));
++        return true;
+ }
+ 
+ Eigen::Vector3f Frame::UnprojectStereoFishEye(const int &i){
+--- a/src/Tracking.cc
++++ b/src/Tracking.cc
+@@ -31,16 +31,110 @@
+ #include "MLPnPsolver.h"
+ #include "GeometricTools.h"
+ 
++#include "MetricRigInitialization.h"
++
++namespace ORB_SLAM3 { namespace {
++MetricRigScaleObservations CollectRigScaleObservations(
++    Frame& first, Frame& current,
++    const std::vector<Eigen::Vector3f>& worldPoints,
++    const std::vector<int>& matches,
++    const Sophus::SE3f& firstPose, const Sophus::SE3f& currentPose)
++{
++    MetricRigScaleObservations observations;
++    Frame* frames[2] = {&first, &current};
++    const Sophus::SE3f poses[2] = {firstPose, currentPose};
++    for(size_t i=0; i<matches.size() && i<worldPoints.size(); ++i) {
++        if(matches[i]<0 || !worldPoints[i].allFinite()) continue;
++        for(int cameraTime=0; cameraTime<2; ++cameraTime) {
++            Frame& frame=*frames[cameraTime];
++            const int left=cameraTime==0 ? static_cast<int>(i) : matches[i];
++            if(left<0 || left>=frame.Nleft) continue;
++            const int right=frame.mvLeftToRightMatch[left];
++            if(right<0) continue;
++            MetricRigScaleObservation observation;
++            observation.landmarkId=i;
++            observation.bootstrapPointCam0=(poses[cameraTime]*worldPoints[i]).cast<double>();
++            observation.metricStereoPointCam0=frame.mvStereo3Dpoints[left].cast<double>();
++            observation.pixelCam0=Eigen::Vector2d(frame.mvKeys[left].pt.x,frame.mvKeys[left].pt.y);
++            observation.pixelCam1=Eigen::Vector2d(frame.mvKeysRight[right].pt.x,frame.mvKeysRight[right].pt.y);
++            const Sophus::SE3f relative=frame.GetRelativePoseTrl();
++            observation.R10=relative.rotationMatrix().cast<double>();
++            observation.t10Metres=relative.translation().cast<double>();
++            observation.camera0=frame.mpCamera;
++            observation.camera1=frame.mpCamera2;
++            observations.push_back(observation);
++        }
++    }
++    return observations;
++}
++void AddMetricRigObservations(KeyFrame* keyFrame, Frame& frame)
++{
++    for(int left=0; left<frame.Nleft; ++left) {
++        const int right=frame.mvLeftToRightMatch[left];
++        if(right<0) continue;
++        MapPoint* point=keyFrame->GetMapPoint(left);
++        if(!point || point->isBad()) continue;
++        const Eigen::Vector3f pc1=keyFrame->GetRightPose()*point->GetWorldPos();
++        if(pc1.z()<=0) continue;
++        const Eigen::Vector2f uv=frame.mpCamera2->project(pc1);
++        const cv::Point2f measured=frame.mvKeysRight[right].pt;
++        if(!uv.allFinite() || (uv-Eigen::Vector2f(measured.x,measured.y)).squaredNorm()>6.25f) continue;
++        const int index=frame.Nleft+right;
++        if(keyFrame->GetMapPoint(index)) continue;
++        point->AddObservation(keyFrame,index);
++        keyFrame->AddMapPoint(point,index);
++        frame.mvpMapPoints[index]=point;
++        frame.mvbOutlier[index]=false;
++        point->ComputeDistinctiveDescriptors();
++        point->UpdateNormalAndDepth();
++    }
++}
++}}
++
++
+ #include <iostream>
++#include <sstream>
++#include <iomanip>
++#include <cstdlib>
+ 
+ #include <mutex>
+ #include <chrono>
++#include <unordered_set>
+ 
+ 
+ using namespace std;
+ 
+ namespace ORB_SLAM3
+ {
++    void ResetLamariaProjectionDiagnostics();
++    std::string LamariaProjectionDiagnostics();
++    namespace {
++    bool LocalMatchDiagnosticsEnabled()
++    {
++        static const bool enabled=[] { const char* value=std::getenv("LAMARIA_MATCH_DIAGNOSTICS");
++            return value && std::string(value)!="0"; }();
++        return enabled;
++    }
++    float LocalMatchEnvironmentFloat(const char* name, float fallback, float low, float high)
++    {
++        const char* value=std::getenv(name);
++        if(!value) return fallback;
++        char* end=nullptr;
++        const float parsed=std::strtof(value,&end);
++        if(end==value || *end || !std::isfinite(parsed) || parsed<low || parsed>high) {
++            std::cerr << "[LM_DIAG] invalid " << name << "; using " << fallback << std::endl;
++            return fallback;
++        }
++        return parsed;
++    }
++    struct LocalTrackingCounters {
++        int incoming[2]={0,0}, before[2]={0,0}, after[2]={0,0}, outliers[2]={0,0};
++        int already_seen=0, bad=0, frustum_checked=0, frustum_rejected=0, visible[2]={0,0};
++        int to_match=0;
++    };
++    thread_local LocalTrackingCounters localTrackingCounters;
++    }
++
+ 
+ 
+ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Atlas *pAtlas, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, Settings* settings, const string &_nameSeq):
+@@ -3087,8 +3181,43 @@
+                         // keyframes from BEFORE the dropout (BoW -- immune to
+                         // however far the IMU has drifted). Success replaces
+                         // the frame's pose+matches; TrackLocalMap confirms it.
+-                        if(bOK && mbCoasting && TryCoastRelatch())
+-                            mTimeStampLost = mCurrentFrame.mTimeStamp; // fresh grace
++                        if(bOK && mbCoasting) {
++                            const bool diagnosticRelatch=LocalMatchDiagnosticsEnabled();
++                            const Sophus::SE3f poseBeforeRelatch=mCurrentFrame.GetPose();
++                            int associationsBeforeRelatch[2]={0,0};
++                            if(diagnosticRelatch) {
++                                for(int i=0; i<mCurrentFrame.N; ++i)
++                                    if(mCurrentFrame.mvpMapPoints[i])
++                                        ++associationsBeforeRelatch[mCurrentFrame.Nleft!=-1 && i>=mCurrentFrame.Nleft ? 1 : 0];
++                            }
++                            const bool relatchSucceeded=TryCoastRelatch();
++                            if(relatchSucceeded)
++                                mTimeStampLost = mCurrentFrame.mTimeStamp; // fresh grace
++                            if(diagnosticRelatch) {
++                                const Sophus::SE3f poseAfterRelatch=mCurrentFrame.GetPose();
++                                int associationsAfterRelatch[2]={0,0}, inliersAfterRelatch[2]={0,0};
++                                for(int i=0; i<mCurrentFrame.N; ++i) {
++                                    if(!mCurrentFrame.mvpMapPoints[i]) continue;
++                                    const int c=mCurrentFrame.Nleft!=-1 && i>=mCurrentFrame.Nleft ? 1 : 0;
++                                    ++associationsAfterRelatch[c];
++                                    if(!mCurrentFrame.mvbOutlier[i]) ++inliersAfterRelatch[c];
++                                }
++                                auto scalar=[](float value) {
++                                    if(!std::isfinite(value)) return std::string("null");
++                                    std::ostringstream number; number << std::setprecision(8) << value; return number.str();
++                                };
++                                std::ostringstream os;
++                                os << std::setprecision(12) << "[RELATCH_DIAG] {\"frame\":" << mCurrentFrame.mnId
++                                   << ",\"time\":" << mCurrentFrame.mTimeStamp << ",\"map\":" << mpAtlas->GetCurrentMap()->GetId()
++                                   << ",\"success\":" << relatchSucceeded
++                                   << ",\"camera_displacement_m\":" << scalar((poseAfterRelatch.inverse().translation()-poseBeforeRelatch.inverse().translation()).norm())
++                                   << ",\"rotation_rad\":" << scalar(Eigen::AngleAxisf(poseAfterRelatch.rotationMatrix()*poseBeforeRelatch.rotationMatrix().transpose()).angle())
++                                   << ",\"before\":[" << associationsBeforeRelatch[0] << ',' << associationsBeforeRelatch[1]
++                                   << "],\"after\":[" << associationsAfterRelatch[0] << ',' << associationsAfterRelatch[1]
++                                   << "],\"inliers_after\":[" << inliersAfterRelatch[0] << ',' << inliersAfterRelatch[1] << "]}";
++                                std::cout << os.str() << std::endl;
++                            }
++                        }
+ 
+                         if (mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost)
+                         {
+@@ -3499,6 +3628,12 @@
+ 
+ void Tracking::StereoInitialization()
+ {
++    if(mSensor==System::IMU_STEREO && mpSystem->mRig.IsEnabled() &&
++       !mpSystem->mRig.NonOverlapping()) {
++        MonocularInitialization();
++        return;
++    }
++
+     if(mCurrentFrame.N>500)
+     {
+         if (mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
+@@ -3627,7 +3762,7 @@
+ 
+             fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
+ 
+-            if (mSensor == System::IMU_MONOCULAR)
++            if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))
+             {
+                 if(mpImuPreintegratedFromLastKF)
+                 {
+@@ -3645,7 +3780,7 @@
+     }
+     else
+     {
+-        if (((int)mCurrentFrame.mvKeys.size()<=100)||((mSensor == System::IMU_MONOCULAR)&&(mLastFrame.mTimeStamp-mInitialFrame.mTimeStamp>1.0)))
++        if (((int)mCurrentFrame.mvKeys.size()<=100)||(((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))&&(mLastFrame.mTimeStamp-mInitialFrame.mTimeStamp>1.0)))
+         {
+             mbReadyToInitializate = false;
+ 
+@@ -3681,6 +3816,23 @@
+             mInitialFrame.SetPose(Sophus::SE3f());
+             mCurrentFrame.SetPose(Tcw);
+ 
++
++            // Use temporal parallax for a large seed map, but anchor its units
++            // with independently triangulated, calibrated stereo observations.
++            if(mSensor==System::IMU_STEREO && mpSystem->mRig.IsEnabled()) {
++                std::vector<Eigen::Vector3f> points;
++                points.reserve(mvIniP3D.size());
++                for(const cv::Point3f& p:mvIniP3D) points.emplace_back(p.x,p.y,p.z);
++                const auto metric=EstimateMetricRigScale(CollectRigScaleObservations(
++                    mInitialFrame,mCurrentFrame,points,mvIniMatches,
++                    mInitialFrame.GetPose(),mCurrentFrame.GetPose()));
++                if(!metric.valid) {
++                    if(mCurrentFrame.mnId%20==0)
++                        std::cout << "[METRIC-RIG] waiting for observable scale: " << metric.reason << std::endl;
++                    return;
++                }
++            }
++
+             CreateInitialMapMonocular();
+         }
+     }
+@@ -3694,7 +3846,7 @@
+     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
+     KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
+ 
+-    if(mSensor == System::IMU_MONOCULAR)
++    if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))
+         pKFini->mpImuPreintegrated = (IMU::Preintegrated*)(NULL);
+ 
+ 
+@@ -3746,7 +3898,7 @@
+ 
+     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
+     float invMedianDepth;
+-    if(mSensor == System::IMU_MONOCULAR)
++    if((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))
+         invMedianDepth = 4.0f/medianDepth; // 4.0f
+     else
+         invMedianDepth = 1.0f/medianDepth;
+@@ -3756,6 +3908,28 @@
+         Verbose::PrintMess("Wrong initialization, reseting...", Verbose::VERBOSITY_QUIET);
+         mpSystem->ResetActiveMap();
+         return;
++    }
++
++
++    if(mSensor==System::IMU_STEREO && mpSystem->mRig.IsEnabled()) {
++        std::vector<Eigen::Vector3f> points(mvIniMatches.size(),Eigen::Vector3f::Zero());
++        for(size_t i=0;i<mvIniMatches.size();++i) {
++            if(mvIniMatches[i]<0) continue;
++            MapPoint* point=pKFini->GetMapPoint(i);
++            if(point) points[i]=point->GetWorldPos();
++        }
++        const auto metric=EstimateMetricRigScale(CollectRigScaleObservations(
++            mInitialFrame,mCurrentFrame,points,mvIniMatches,pKFini->GetPose(),pKFcur->GetPose()));
++        if(!metric.valid) {
++            std::cout << "[METRIC-RIG] rejected post-BA scale: " << metric.reason << std::endl;
++            mpSystem->ResetActiveMap();
++            return;
++        }
++        invMedianDepth=static_cast<float>(metric.metresPerBootstrapUnit);
++        std::cout << "[METRIC-RIG] scale=" << metric.metresPerBootstrapUnit
++                  << " inlier_landmarks=" << metric.inlierLandmarks
++                  << " reprojection_median_px=" << metric.medianReprojectionErrorPixels
++                  << " log_scale_sigma=" << metric.logScaleStdDev << std::endl;
+     }
+ 
+     // Scale initial baseline
+@@ -3775,7 +3949,7 @@
+         }
+     }
+ 
+-    if (mSensor == System::IMU_MONOCULAR)
++    if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO))
+     {
+         pKFcur->mPrevKF = pKFini;
+         pKFini->mNextKF = pKFcur;
+@@ -3784,6 +3958,14 @@
+         mpImuPreintegratedFromLastKF = new IMU::Preintegrated(pKFcur->mpImuPreintegrated->GetUpdatedBias(),pKFcur->mImuCalib);
+     }
+ 
++
++    if(mSensor==System::IMU_STEREO && mpSystem->mRig.IsEnabled()) {
++        AddMetricRigObservations(pKFini,mInitialFrame);
++        AddMetricRigObservations(pKFcur,mCurrentFrame);
++        pKFini->UpdateConnections();
++        pKFcur->UpdateConnections();
++        Optimizer::GlobalBundleAdjustemnt(mpAtlas->GetCurrentMap(),20);
++    }
+ 
+     mpLocalMapper->InsertKeyFrame(pKFini);
+     mpLocalMapper->InsertKeyFrame(pKFcur);
+@@ -3840,7 +4022,7 @@
+     //mnLastRelocFrameId = mnLastInitFrameId; // The last relocation KF_id is the current id, because it is the new starting point for new map
+     Verbose::PrintMess("First frame id in map: " + to_string(mnLastInitFrameId+1), Verbose::VERBOSITY_NORMAL);
+     mbVO = false; // Init value for know if there are enough MapPoints in the last KF
+-    if(mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR)
++    if(mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
+     {
+         mbReadyToInitializate = false;
+     }
+@@ -4125,15 +4307,96 @@
+         return nmatchesMap>=10;
+ }
+ 
++
++namespace {
++struct TemporalAssociationResult {
++    int validPrevious[2]={0,0}, candidates[2]={0,0};
++    std::vector<int> seeded;
++};
++
++// Match the immediately preceding appearance, preserving established landmark
++// IDs. IMU prediction and the existing joint geometric optimizer are unchanged.
++TemporalAssociationResult SeedTemporalLandmarks(Frame& previous, Frame& current, Map* map)
++{
++    TemporalAssociationResult result;
++    static const bool enabled=[] {
++        const char* value=std::getenv("LAMARIA_TEMPORAL_ASSOCIATIONS");
++        return value && std::string(value)!="0";
++    }();
++    if(!enabled || previous.Nleft<0 || current.Nleft<0 ||
++       current.mTimeStamp<=previous.mTimeStamp ||
++       current.mTimeStamp-previous.mTimeStamp>0.15) return result;
++    struct Candidate { int distance; int feature; MapPoint* point; };
++    for(int camera=0; camera<2; ++camera) {
++        const int oldOffset=camera ? previous.Nleft : 0;
++        const int newOffset=camera ? current.Nleft : 0;
++        const int oldCount=camera ? previous.Nright : previous.Nleft;
++        const int newCount=camera ? current.Nright : current.Nleft;
++        if(oldCount<2 || newCount<2 || previous.mDescriptors.type()!=CV_8U ||
++           current.mDescriptors.type()!=CV_8U || previous.mDescriptors.cols!=32 ||
++           current.mDescriptors.cols!=32 || previous.mDescriptors.rows<oldOffset+oldCount ||
++           current.mDescriptors.rows<newOffset+newCount) continue;
++        std::unordered_set<MapPoint*> occupied;
++        for(int k=0; k<newCount; ++k)
++            if(current.mvpMapPoints[newOffset+k]) occupied.insert(current.mvpMapPoints[newOffset+k]);
++        const cv::Mat oldDescriptors=previous.mDescriptors.rowRange(oldOffset,oldOffset+oldCount);
++        const cv::Mat newDescriptors=current.mDescriptors.rowRange(newOffset,newOffset+newCount);
++        cv::BFMatcher matcher(cv::NORM_HAMMING);
++        std::vector<std::vector<cv::DMatch>> forward;
++        std::vector<cv::DMatch> backward;
++        matcher.knnMatch(oldDescriptors,newDescriptors,forward,2);
++        matcher.match(newDescriptors,oldDescriptors,backward);
++        std::vector<Candidate> candidates;
++        for(int k=0; k<oldCount; ++k) {
++            const int oldIndex=oldOffset+k;
++            if(previous.mvbOutlier[oldIndex]) continue;
++            MapPoint* point=previous.mvpMapPoints[oldIndex];
++            if(!point || point->isBad() || point->GetMap()!=map ||
++               point->Observations()==0 || occupied.count(point)) continue;
++            ++result.validPrevious[camera];
++            if(static_cast<size_t>(k)>=forward.size() || forward[k].size()<2) continue;
++            const auto& best=forward[k][0];
++            if(best.distance>70.0f || best.distance>=0.8f*forward[k][1].distance ||
++               best.trainIdx<0 || best.trainIdx>=newCount ||
++               static_cast<size_t>(best.trainIdx)>=backward.size() ||
++               backward[best.trainIdx].trainIdx!=k) continue;
++            const int index=newOffset+best.trainIdx;
++            if(current.mvpMapPoints[index]) continue;
++            candidates.push_back({static_cast<int>(best.distance),index,point});
++        }
++        result.candidates[camera]=candidates.size();
++        std::sort(candidates.begin(),candidates.end(),[](const Candidate& a,const Candidate& b) {
++            if(a.distance!=b.distance) return a.distance<b.distance;
++            return a.feature<b.feature;
++        });
++        for(const Candidate& candidate:candidates) {
++            if(current.mvpMapPoints[candidate.feature] || occupied.count(candidate.point)) continue;
++            current.mvpMapPoints[candidate.feature]=candidate.point;
++            current.mvbOutlier[candidate.feature]=false;
++            occupied.insert(candidate.point);
++            result.seeded.push_back(candidate.feature);
++        }
++    }
++    return result;
++}
++}
++
+ bool Tracking::TrackLocalMap()
+ {
+ 
+     // We have an estimation of the camera pose and some map points tracked in the frame.
+     // We retrieve the local map and try to find matches to points in the local map.
+     mTrackedFr++;
++    const TemporalAssociationResult temporal=SeedTemporalLandmarks(mLastFrame,mCurrentFrame,mpAtlas->GetCurrentMap());
+ 
+     UpdateLocalMap();
+     SearchLocalPoints();
++
++    if(LocalMatchDiagnosticsEnabled()) {
++        for(int i=0; i<mCurrentFrame.N; ++i)
++            if(mCurrentFrame.mvpMapPoints[i])
++                ++localTrackingCounters.before[mCurrentFrame.Nleft!=-1 && i>=mCurrentFrame.Nleft ? 1 : 0];
++    }
+ 
+     // TOO check outliers before PO
+     int aux1 = 0, aux2=0;
+@@ -4158,6 +4421,7 @@
+     const Eigen::Vector3f Vw_imu_pred = mCurrentFrame.GetVelocity();
+     const IMU::Bias bias_imu_pred = mCurrentFrame.mImuBias;
+ 
++    const char* diagnosticOptimizer="visual";
+     int inliers;
+     if (!mpAtlas->isImuInitialized())
+         Optimizer::PoseOptimization(&mCurrentFrame);
+@@ -4170,16 +4434,41 @@
+         }
+         else
+         {
+-            // if(!mbMapUpdated && mState == OK) //  && (mnMatchesInliers>30))
+-            if(!mbMapUpdated) //  && (mnMatchesInliers>30))
++            // A frame prior is not produced by visual-only pose optimization.
++            // Select an optimizer only after its integration/prior inputs exist.
++            const IMU::Preintegrated* frameIntegration = mCurrentFrame.mpImuPreintegratedFrame;
++            const IMU::Preintegrated* keyFrameIntegration = mCurrentFrame.mpImuPreintegrated;
++            const bool hasFrameIntegration = frameIntegration &&
++                    std::isfinite(frameIntegration->dT) && frameIntegration->dT > 0.0f;
++            const bool hasKeyFrameIntegration = keyFrameIntegration &&
++                    std::isfinite(keyFrameIntegration->dT) && keyFrameIntegration->dT > 0.0f;
++            const Frame* previousFrame = mCurrentFrame.mpPrevFrame;
++            // LastFrame currently also reads bias-RW covariance from the
++            // keyframe integration, so that pointer must exist as well.
++            const bool hasFramePrior = previousFrame && previousFrame->mpcpi &&
++                    hasFrameIntegration && hasKeyFrameIntegration;
++            KeyFrame* previousKeyFrame = hasKeyFrameIntegration ? mCurrentFrame.mpLastKeyFrame : nullptr;
++            const bool hasKeyFrameAnchor = previousKeyFrame &&
++                    !previousKeyFrame->isBad() &&
++                    previousKeyFrame->GetMap() == mpAtlas->GetCurrentMap() &&
++                    hasKeyFrameIntegration;
++
++            if(!mbMapUpdated && hasFramePrior)
+             {
+                 Verbose::PrintMess("TLM: PoseInertialOptimizationLastFrame ", Verbose::VERBOSITY_DEBUG);
+-                inliers = Optimizer::PoseInertialOptimizationLastFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
++                diagnosticOptimizer="last_frame";
++                inliers = Optimizer::PoseInertialOptimizationLastFrame(&mCurrentFrame);
++            }
++            else if(hasKeyFrameAnchor)
++            {
++                Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
++                diagnosticOptimizer="last_keyframe";
++                inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(&mCurrentFrame);
+             }
+             else
+             {
+-                Verbose::PrintMess("TLM: PoseInertialOptimizationLastKeyFrame ", Verbose::VERBOSITY_DEBUG);
+-                inliers = Optimizer::PoseInertialOptimizationLastKeyFrame(&mCurrentFrame); // , !mpLastKeyFrame->GetMap()->GetIniertialBA1());
++                Verbose::PrintMess("TLM: PoseOptimization (inertial prior/integration unavailable)", Verbose::VERBOSITY_DEBUG);
++                inliers = Optimizer::PoseOptimization(&mCurrentFrame);
+             }
+         }
+     }
+@@ -4215,6 +4504,80 @@
+                 mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
+         }
+     }
++
++
++    if(LocalMatchDiagnosticsEnabled() && (!temporal.seeded.empty() || mCurrentFrame.mnId%20==0)) {
++        int seeded[2]={0,0}, retained[2]={0,0};
++        for(int index:temporal.seeded) {
++            const int camera=index>=mCurrentFrame.Nleft ? 1 : 0;
++            ++seeded[camera];
++            if(mCurrentFrame.mvpMapPoints[index] && !mCurrentFrame.mvbOutlier[index]) ++retained[camera];
++        }
++        std::ostringstream report; report << std::setprecision(12)
++            << "[TEMPORAL_DIAG] {\"time\":" << mCurrentFrame.mTimeStamp
++            << ",\"map\":" << mpAtlas->GetCurrentMap()->GetId()
++            << ",\"previous\":[" << temporal.validPrevious[0] << ',' << temporal.validPrevious[1]
++            << "],\"seeded\":[" << seeded[0] << ',' << seeded[1]
++            << "],\"retained\":[" << retained[0] << ',' << retained[1] << "]}";
++        std::cout << report.str() << std::endl;
++    }
++    const Sophus::SE3f diagnosticOptimizedPose = LocalMatchDiagnosticsEnabled() ? mCurrentFrame.GetPose() : Tcw_imu_pred;
++    const Eigen::Vector3f diagnosticOptimizedVelocity = LocalMatchDiagnosticsEnabled() ? mCurrentFrame.GetVelocity() : Vw_imu_pred;
++    const IMU::Bias diagnosticOptimizedBias = LocalMatchDiagnosticsEnabled() ? mCurrentFrame.mImuBias : bias_imu_pred;
++    if(LocalMatchDiagnosticsEnabled()) {
++        for(int i=0; i<mCurrentFrame.N; ++i) {
++            if(!mCurrentFrame.mvpMapPoints[i]) continue;
++            const int c=mCurrentFrame.Nleft!=-1 && i>=mCurrentFrame.Nleft ? 1 : 0;
++            if(mCurrentFrame.mvbOutlier[i]) ++localTrackingCounters.outliers[c];
++            else ++localTrackingCounters.after[c];
++        }
++    }
++    auto diagnosticReturn = [&](bool success) {
++        if(!LocalMatchDiagnosticsEnabled()) return success;
++        static const int every=static_cast<int>(LocalMatchEnvironmentFloat("LAMARIA_MATCH_DIAG_EVERY",20,1,1000));
++        if(success && mState==OK && mnMatchesInliers>=50 && mCurrentFrame.mnId%every!=0) return success;
++        const auto& d=localTrackingCounters;
++        auto scalar=[](float value) {
++            if(!std::isfinite(value)) return std::string("null");
++            std::ostringstream number; number << std::setprecision(8) << value; return number.str();
++        };
++        const Eigen::Vector3f gyroPred(bias_imu_pred.bwx,bias_imu_pred.bwy,bias_imu_pred.bwz);
++        const Eigen::Vector3f gyroPost(diagnosticOptimizedBias.bwx,diagnosticOptimizedBias.bwy,diagnosticOptimizedBias.bwz);
++        const Eigen::Vector3f accelPred(bias_imu_pred.bax,bias_imu_pred.bay,bias_imu_pred.baz);
++        const Eigen::Vector3f accelPost(diagnosticOptimizedBias.bax,diagnosticOptimizedBias.bay,diagnosticOptimizedBias.baz);
++        std::ostringstream os;
++        os << std::setprecision(12) << "[LM_DIAG] {\"frame\":" << mCurrentFrame.mnId
++           << ",\"time\":" << mCurrentFrame.mTimeStamp << ",\"map\":" << mpAtlas->GetCurrentMap()->GetId()
++           << ",\"state\":" << static_cast<int>(mState) << ",\"imu_initialized\":" << mpAtlas->isImuInitialized()
++           << ",\"ba2\":" << mpAtlas->GetCurrentMap()->GetIniertialBA2()
++           << ",\"success\":" << success << ",\"inliers\":" << mnMatchesInliers
++           << ",\"local_points\":" << mvpLocalMapPoints.size() << ",\"local_keyframes\":" << mvpLocalKeyFrames.size()
++           << ",\"already_seen\":" << d.already_seen << ",\"bad\":" << d.bad
++           << ",\"frustum_checked\":" << d.frustum_checked << ",\"frustum_rejected\":" << d.frustum_rejected
++           << ",\"to_match\":" << d.to_match << ",\"cams\":[";
++        for(int c=0; c<2; ++c) {
++            if(c) os << ',';
++            os << "{\"detected\":" << (mCurrentFrame.Nleft==-1 ? (c==0 ? mCurrentFrame.N : 0) : (c==0 ? mCurrentFrame.Nleft : mCurrentFrame.Nright))
++               << ",\"incoming\":" << d.incoming[c] << ",\"visible\":" << d.visible[c]
++               << ",\"before_opt\":" << d.before[c] << ",\"after_opt\":" << d.after[c]
++               << ",\"outliers\":" << d.outliers[c] << '}';
++        }
++        os << "],\"projection\":" << LamariaProjectionDiagnostics()
++           << ",\"optimizer\":\"" << diagnosticOptimizer << "\",\"map_updated\":" << mbMapUpdated
++           << ",\"coasting\":" << mbCoasting << ",\"coast_armed\":" << mbCoastArmed << ",\"coast_restore\":" << mbCoastRestore
++           << ",\"prior_exists\":" << (mCurrentFrame.mpcpi!=nullptr)
++           << ",\"opt_camera_displacement_m\":" << scalar((diagnosticOptimizedPose.inverse().translation()-Tcw_imu_pred.inverse().translation()).norm())
++           << ",\"opt_rotation_rad\":" << scalar(Eigen::AngleAxisf(diagnosticOptimizedPose.rotationMatrix()*Tcw_imu_pred.rotationMatrix().transpose()).angle())
++           << ",\"pred_speed_mps\":" << scalar(Vw_imu_pred.norm()) << ",\"opt_speed_mps\":" << scalar(diagnosticOptimizedVelocity.norm())
++           << ",\"opt_velocity_delta_mps\":" << scalar((diagnosticOptimizedVelocity-Vw_imu_pred).norm())
++           << ",\"accepted_velocity_delta_mps\":" << scalar((mCurrentFrame.GetVelocity()-Vw_imu_pred).norm())
++           << ",\"pred_gyro_bias_norm\":" << scalar(gyroPred.norm()) << ",\"opt_gyro_bias_norm\":" << scalar(gyroPost.norm())
++           << ",\"opt_gyro_bias_delta\":" << scalar((gyroPost-gyroPred).norm())
++           << ",\"pred_accel_bias_norm\":" << scalar(accelPred.norm()) << ",\"opt_accel_bias_norm\":" << scalar(accelPost.norm())
++           << ",\"opt_accel_bias_delta\":" << scalar((accelPost-accelPred).norm()) << '}';
++        std::cout << os.str() << std::endl;
++        return success;
++    };
+ 
+     // A landmark's mnVisible counts every frame it PROJECTED INTO VIEW; mnFound
+     // counts the frames it was actually matched. MapPointCulling() kills any
+@@ -4247,7 +4610,7 @@
+     // More restrictive if there was a relocalization recently
+     mpLocalMapper->mnMatchesInliers=mnMatchesInliers;
+     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
+-        return false;
++        return diagnosticReturn(false);
+ 
+     // COASTING means the IMU owns the pose through a dropout that started from
+     // confident tracking. Accepting a visual update on 11 inliers lets a
+@@ -4257,7 +4620,7 @@
+     // fully back to the IMU. NOT coasting (e.g. wobbling shortly after init):
+     // stock ORB-SLAM3 behaviour, so a bad init fails fast and resets.
+     if((mnMatchesInliers > mnRecentlyLostMinInliers) && (mState==RECENTLY_LOST))
+-        return true;
++        return diagnosticReturn(true);
+     if(mState==RECENTLY_LOST && mbCoasting && mnMatchesInliers <= mnRecentlyLostMinInliers){
+         mCurrentFrame.SetPose(Tcw_imu_pred);          // hand the frame back to the IMU
+         if(mbCoastRestore){                           // ... ALL of it: the failed
+@@ -4272,7 +4635,7 @@
+             std::cout << "[Debug] COAST: rejecting visual update on "
+                       << mnMatchesInliers << " inliers (need > "
+                       << mnRecentlyLostMinInliers << "); IMU carries" << std::endl;
+-        return false;
++        return diagnosticReturn(false);
+     }
+ 
+ 
+@@ -4297,26 +4660,26 @@
+                               << " inliers): frame handed back to IMU prediction"
+                               << std::endl;
+             }
+-            return false;
++            return diagnosticReturn(false);
+         }
+         else
+-            return true;
++            return diagnosticReturn(true);
+     }
+     else if (mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
+     {
+         if(mnMatchesInliers<15)
+         {
+-            return false;
++            return diagnosticReturn(false);
+         }
+         else
+-            return true;
++            return diagnosticReturn(true);
+     }
+     else
+     {
+         if(mnMatchesInliers<30)
+-            return false;
++            return diagnosticReturn(false);
+         else
+-            return true;
++            return diagnosticReturn(true);
+     }
+ }
+ 
+@@ -4609,6 +4972,14 @@
+ 
+ void Tracking::SearchLocalPoints()
+ {
++    const bool diag=LocalMatchDiagnosticsEnabled();
++    if(diag) {
++        localTrackingCounters=LocalTrackingCounters();
++        ResetLamariaProjectionDiagnostics();
++        for(int i=0; i<mCurrentFrame.N; ++i)
++            if(mCurrentFrame.mvpMapPoints[i])
++                ++localTrackingCounters.incoming[mCurrentFrame.Nleft!=-1 && i>=mCurrentFrame.Nleft ? 1 : 0];
++    }
+     mvpChargedVisible.clear();
+     mvpChargedVisible.reserve(2048);
+ 
+@@ -4640,12 +5011,23 @@
+     {
+         MapPoint* pMP = *vit;
+ 
+-        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId)
++        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId) {
++            if(diag) ++localTrackingCounters.already_seen;
+             continue;
+-        if(pMP->isBad())
++        }
++        if(pMP->isBad()) {
++            if(diag) ++localTrackingCounters.bad;
+             continue;
++        }
++        if(diag) ++localTrackingCounters.frustum_checked;
+         // Project (this fills MapPoint variables for matching)
+-        if(mCurrentFrame.isInFrustum(pMP,0.5))
++        const bool inFrustum=mCurrentFrame.isInFrustum(pMP,0.5);
++        if(diag) {
++            if(!inFrustum) ++localTrackingCounters.frustum_rejected;
++            if(pMP->mbTrackInView) ++localTrackingCounters.visible[0];
++            if(pMP->mbTrackInViewR) ++localTrackingCounters.visible[1];
++        }
++        if(inFrustum)
+         {
+             pMP->IncreaseVisible();
+             mvpChargedVisible.push_back(pMP);
+@@ -4657,9 +5039,12 @@
+         }
+     }
+ 
++    if(diag) localTrackingCounters.to_match=nToMatch;
+     if(nToMatch>0)
+     {
+-        ORBmatcher matcher(0.8);
++        static const float localRatio=LocalMatchEnvironmentFloat("LAMARIA_LOCAL_NN_RATIO",0.8f,0.5f,0.99f);
++        static const float localRadius=LocalMatchEnvironmentFloat("LAMARIA_LOCAL_RADIUS_MULT",1.0f,0.5f,3.0f);
++        ORBmatcher matcher(localRatio);
+         int th = 1;
+         if(mSensor==System::RGBD || mSensor==System::IMU_RGBD)
+             th=3;
+@@ -4682,7 +5067,7 @@
+         if(mState==LOST || mState==RECENTLY_LOST) // Lost for less than 1 second
+             th=15; // 15
+ 
+-        int matches = matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th, mpLocalMapper->mbFarPoints, mpLocalMapper->mThFarPoints);
++        int matches = matcher.SearchByProjection(mCurrentFrame, mvpLocalMapPoints, th*localRadius, mpLocalMapper->mbFarPoints, mpLocalMapper->mThFarPoints);
+     }
+ }
+ 
+--- a/src/LocalMapping.cc
++++ b/src/LocalMapping.cc
+@@ -28,9 +28,33 @@
+ 
+ #include<mutex>
+ #include<chrono>
++#include<cstdio>
++#include<cstdlib>
+ 
+ namespace ORB_SLAM3
+ {
++namespace {
++// Audit only: counters do not change matching, geometric gates, or map ownership.
++bool LamariaMapGateDiagnostics() {
++    static const bool enabled = std::getenv("LAMARIA_DIAG_GATES") != nullptr;
++    return enabled;
++}
++struct LamariaCreationCounts {
++    KeyFrame* kf;
++    bool enabled;
++    int neighbors=0, baseline=0, matches=0, triangulation=0, parallax=0;
++    int depth1=0, depth2=0, reprojection1=0, reprojection2=0;
++    int zero_distance=0, far=0, scale=0, created=0, left=0, right=0, interrupted=0;
++    explicit LamariaCreationCounts(KeyFrame* p): kf(p), enabled(LamariaMapGateDiagnostics()) {}
++    ~LamariaCreationCounts() {
++        if(!enabled || (kf->mnId%10 != 0 && created>=10)) return;
++        std::fprintf(stderr, "[LAMARIA_GATE_CREATE] t=%.9f kf=%lu neighbors=%d baseline=%d matches=%d triangulation=%d parallax=%d depth1=%d depth2=%d reprojection1=%d reprojection2=%d zero_distance=%d far=%d scale=%d created=%d left=%d right=%d interrupted=%d\n",
++            kf->mTimeStamp, kf->mnId, neighbors, baseline, matches, triangulation,
++            parallax, depth1, depth2, reprojection1, reprojection2, zero_distance,
++            far, scale, created, left, right, interrupted);
++    }
++};
++} // namespace
+ 
+ bool LocalMapping::skLineOutlierCull = true;
+ bool LocalMapping::skLineCulling = true;
+@@ -768,36 +792,50 @@
+     const int cnThObs = nThObs;
+ 
+     int borrar = mlpRecentAddedMapPoints.size();
++    const int auditInitial = borrar;
++    int auditBad=0, auditFound=0, auditObservations=0, auditGraduated=0, auditKept=0;
+ 
+     while(lit!=mlpRecentAddedMapPoints.end())
+     {
+         MapPoint* pMP = *lit;
+ 
+-        if(pMP->isBad())
++        if(pMP->isBad()) {
++            ++auditBad;
+             lit = mlpRecentAddedMapPoints.erase(lit);
++        }
+         else if(pMP->GetFoundRatio()<0.10f)
+         {
++            ++auditFound;
+             pMP->SetBadFlag();
+             lit = mlpRecentAddedMapPoints.erase(lit);
+         }
+         else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=2 && pMP->Observations()<=cnThObs)
+         {
++            ++auditObservations;
+             pMP->SetBadFlag();
+             lit = mlpRecentAddedMapPoints.erase(lit);
+         }
+-        else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=3)
++        else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=3) {
++            ++auditGraduated;
+             lit = mlpRecentAddedMapPoints.erase(lit);
++        }
+         else
+         {
++            ++auditKept;
+             lit++;
+             borrar--;
+         }
+     }
++    if(LamariaMapGateDiagnostics() && (nCurrentKFid%10 == 0 || auditFound+auditObservations>50))
++        std::fprintf(stderr, "[LAMARIA_GATE_CULL] t=%.9f kf=%lu initial=%d bad=%d found_ratio=%d observations=%d graduated=%d kept=%d threshold=%d\n",
++            mpCurrentKeyFrame->mTimeStamp, nCurrentKFid, auditInitial, auditBad,
++            auditFound, auditObservations, auditGraduated, auditKept, cnThObs);
+ }
+ 
+ 
+ void LocalMapping::CreateNewMapPoints()
+ {
++    LamariaCreationCounts audit(mpCurrentKeyFrame);
+     // Retrieve neighbor keyframes in covisibility graph
+     int nn = 10;
+     // For stereo inertial case
+@@ -844,8 +882,11 @@
+     // Search matches with epipolar restriction and triangulate
+     for(size_t i=0; i<vpNeighKFs.size(); i++)
+     {
+-        if(i>0 && CheckNewKeyFrames())
++        if(i>0 && CheckNewKeyFrames()) {
++            audit.interrupted=1;
+             return;
++        }
++        ++audit.neighbors;
+ 
+         KeyFrame* pKF2 = vpNeighKFs[i];
+ 
+@@ -858,16 +899,14 @@
+ 
+         if(!mbMonocular)
+         {
+-            if(baseline<pKF2->mb)
+-                continue;
++            if(baseline<pKF2->mb) { ++audit.baseline; continue; }
+         }
+         else
+         {
+             const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
+             const float ratioBaselineDepth = baseline/medianDepthKF2;
+ 
+-            if(ratioBaselineDepth<0.01)
+-                continue;
++            if(ratioBaselineDepth<0.01) { ++audit.baseline; continue; }
+         }
+ 
+         // Search matches that fullfil epipolar constraint
+@@ -891,6 +930,7 @@
+ 
+         // Triangulate each match
+         const int nmatches = vMatchedIndices.size();
++        audit.matches += nmatches;
+         for(int ikp=0; ikp<nmatches; ikp++)
+         {
+             const int &idx1 = vMatchedIndices[ikp].first;
+@@ -899,7 +939,10 @@
+             const cv::KeyPoint &kp1 = (mpCurrentKeyFrame -> NLeft == -1) ? mpCurrentKeyFrame->mvKeysUn[idx1]
+                                                                          : (idx1 < mpCurrentKeyFrame -> NLeft) ? mpCurrentKeyFrame -> mvKeys[idx1]
+                                                                                                                : mpCurrentKeyFrame -> mvKeysRight[idx1 - mpCurrentKeyFrame -> NLeft];
+-            const float kp1_ur=mpCurrentKeyFrame->mvuRight[idx1];
++            // Rectified disparity exists only for the single-camera stereo model.
++            // General two-camera indices are pooled; mvuRight is left-sized.
++            const float kp1_ur = !mpCurrentKeyFrame->mpCamera2
++                    ? mpCurrentKeyFrame->mvuRight[idx1] : -1.0f;
+             bool bStereo1 = (!mpCurrentKeyFrame->mpCamera2 && kp1_ur>=0);
+             const bool bRight1 = (mpCurrentKeyFrame -> NLeft == -1 || idx1 < mpCurrentKeyFrame -> NLeft) ? false
+                                                                                                          : true;
+@@ -908,7 +951,8 @@
+                                                             : (idx2 < pKF2 -> NLeft) ? pKF2 -> mvKeys[idx2]
+                                                                                      : pKF2 -> mvKeysRight[idx2 - pKF2 -> NLeft];
+ 
+-            const float kp2_ur = pKF2->mvuRight[idx2];
++            const float kp2_ur = !pKF2->mpCamera2
++                    ? pKF2->mvuRight[idx2] : -1.0f;
+             bool bStereo2 = (!pKF2->mpCamera2 && kp2_ur>=0);
+             const bool bRight2 = (pKF2 -> NLeft == -1 || idx2 < pKF2 -> NLeft) ? false
+                                                                                : true;
+@@ -994,8 +1038,7 @@
+                                                                           (cosParallaxRays<0.9996 && mbInertial) || (cosParallaxRays<0.9998 && !mbInertial)))
+             {
+                 goodProj = GeometricTools::Triangulate(xn1, xn2, eigTcw1, eigTcw2, x3D);
+-                if(!goodProj)
+-                    continue;
++                if(!goodProj) { ++audit.triangulation; continue; }
+             }
+             else if(bStereo1 && cosParallaxStereo1<cosParallaxStereo2)
+             {
+@@ -1011,23 +1054,21 @@
+             }
+             else
+             {
++                ++audit.parallax;
+                 continue; //No stereo and very low parallax
+             }
+ 
+             if(goodProj && bPointStereo)
+                 countStereoGoodProj++;
+ 
+-            if(!goodProj)
+-                continue;
++            if(!goodProj) { ++audit.triangulation; continue; }
+ 
+             //Check triangulation in front of cameras
+             float z1 = Rcw1.row(2).dot(x3D) + tcw1(2);
+-            if(z1<=0)
+-                continue;
++            if(z1<=0) { ++audit.depth1; continue; }
+ 
+             float z2 = Rcw2.row(2).dot(x3D) + tcw2(2);
+-            if(z2<=0)
+-                continue;
++            if(z2<=0) { ++audit.depth2; continue; }
+ 
+             //Check reprojection error in first keyframe
+             const float &sigmaSquare1 = mpCurrentKeyFrame->mvLevelSigma2[kp1.octave];
+@@ -1041,8 +1082,7 @@
+                 float errX1 = uv1.x - kp1.pt.x;
+                 float errY1 = uv1.y - kp1.pt.y;
+ 
+-                if((errX1*errX1+errY1*errY1)>5.991*sigmaSquare1)
+-                    continue;
++                if((errX1*errX1+errY1*errY1)>5.991*sigmaSquare1) { ++audit.reprojection1; continue; }
+ 
+             }
+             else
+@@ -1053,8 +1093,7 @@
+                 float errX1 = u1 - kp1.pt.x;
+                 float errY1 = v1 - kp1.pt.y;
+                 float errX1_r = u1_r - kp1_ur;
+-                if((errX1*errX1+errY1*errY1+errX1_r*errX1_r)>7.8*sigmaSquare1)
+-                    continue;
++                if((errX1*errX1+errY1*errY1+errX1_r*errX1_r)>7.8*sigmaSquare1) { ++audit.reprojection1; continue; }
+             }
+ 
+             //Check reprojection error in second keyframe
+@@ -1067,8 +1106,7 @@
+                 cv::Point2f uv2 = pCamera2->project(cv::Point3f(x2,y2,z2));
+                 float errX2 = uv2.x - kp2.pt.x;
+                 float errY2 = uv2.y - kp2.pt.y;
+-                if((errX2*errX2+errY2*errY2)>5.991*sigmaSquare2)
+-                    continue;
++                if((errX2*errX2+errY2*errY2)>5.991*sigmaSquare2) { ++audit.reprojection2; continue; }
+             }
+             else
+             {
+@@ -1078,8 +1116,7 @@
+                 float errX2 = u2 - kp2.pt.x;
+                 float errY2 = v2 - kp2.pt.y;
+                 float errX2_r = u2_r - kp2_ur;
+-                if((errX2*errX2+errY2*errY2+errX2_r*errX2_r)>7.8*sigmaSquare2)
+-                    continue;
++                if((errX2*errX2+errY2*errY2+errX2_r*errX2_r)>7.8*sigmaSquare2) { ++audit.reprojection2; continue; }
+             }
+ 
+             //Check scale consistency
+@@ -1089,18 +1126,19 @@
+             Eigen::Vector3f normal2 = x3D - Ow2;
+             float dist2 = normal2.norm();
+ 
+-            if(dist1==0 || dist2==0)
+-                continue;
++            if(dist1==0 || dist2==0) { ++audit.zero_distance; continue; }
+ 
+             if(mbFarPoints && (dist1>=mThFarPoints||dist2>=mThFarPoints)) // MODIFICATION
+-                continue;
++                { ++audit.far; continue; }
+ 
+             const float ratioDist = dist2/dist1;
+             const float ratioOctave = mpCurrentKeyFrame->mvScaleFactors[kp1.octave]/pKF2->mvScaleFactors[kp2.octave];
+ 
+             if(ratioDist*ratioFactor<ratioOctave || ratioDist>ratioOctave*ratioFactor)
+-                continue;
+-
++                { ++audit.scale; continue; }
++
++            ++audit.created;
++            if(bRight1) ++audit.right; else ++audit.left;
+             // Triangulation is succesfull
+             MapPoint* pMP = new MapPoint(x3D, mpCurrentKeyFrame, mpAtlas->GetCurrentMap());
+             if (bPointStereo)
+@@ -1369,7 +1407,15 @@
+                 {
+                     if(!mbMonocular)
+                     {
+-                        if(pKF->mvDepth[i]>pKF->mThDepth || pKF->mvDepth[i]<0)
++                        // General stereo stores depth at the left feature only.
++                        // A pooled right observation refers to that depth through
++                        // its stereo correspondence, never through its pooled index.
++                        int depthIndex = static_cast<int>(i);
++                        if(pKF->NLeft != -1 && depthIndex >= pKF->NLeft)
++                            depthIndex = pKF->mvRightToLeftMatch[depthIndex - pKF->NLeft];
++                        if(depthIndex < 0)
++                            continue; // no stereo depth for this right feature
++                        if(pKF->mvDepth[depthIndex]>pKF->mThDepth || pKF->mvDepth[depthIndex]<0)
+                             continue;
+                     }
+ 
+--- a/src/ORBmatcher.cc
++++ b/src/ORBmatcher.cc
+@@ -20,6 +20,8 @@
+ #include "ORBmatcher.h"
+ 
+ #include<limits.h>
++#include <sstream>
++#include <cstdlib>
+ 
+ #include<opencv2/core/core.hpp>
+ 
+@@ -36,6 +38,24 @@
+     // gates would reject every feature regardless of pixel/descriptor fit.
+     static const bool sbExternalKp = (getenv("KP_DIR") != nullptr);
+ 
++
++    namespace {
++    bool LocalMatchDiagnosticsEnabled()
++    {
++        static const bool enabled = [] { const char* value = std::getenv("LAMARIA_MATCH_DIAGNOSTICS");
++            return value && std::string(value)!="0"; }();
++        return enabled;
++    }
++    struct LocalProjectionCameraCounters {
++        int visible=0, empty=0, candidates=0, occupied=0, stereo_error=0;
++        int occupied_only=0, geometry_only=0, descriptor=0, ratio=0, accepted=0;
++        int invalid_level=0, companion_written=0, companion_conflict=0;
++    };
++    thread_local std::string localProjectionCounters="null";
++    }
++    void ResetLamariaProjectionDiagnostics() { localProjectionCounters="null"; }
++    std::string LamariaProjectionDiagnostics() { return localProjectionCounters; }
++
+     const int ORBmatcher::TH_HIGH = 100;
+     const int ORBmatcher::TH_LOW = 70;   // ALIKED-binarized true matches: median 29, p90 51, max 76 bits (BRIEF default 50 cut ~11%)
+     const int ORBmatcher::HISTO_LENGTH = 30;
+@@ -49,21 +69,31 @@
+         int nmatches=0, left = 0, right = 0;
+ 
+         const bool bFactor = th!=1.0;
++        const bool diag = LocalMatchDiagnosticsEnabled();
++        LocalProjectionCameraCounters counters[2];
++        int not_visible=0, far=0, bad=0;
+ 
+         for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
+         {
+             MapPoint* pMP = vpMapPoints[iMP];
+-            if(!pMP->mbTrackInView && !pMP->mbTrackInViewR)
+-                continue;
+-
+-            if(bFarPoints && pMP->mTrackDepth>thFarPoints)
+-                continue;
+-
+-            if(pMP->isBad())
+-                continue;
++            if(!pMP->mbTrackInView && !pMP->mbTrackInViewR) {
++                if(diag) ++not_visible;
++                continue;
++            }
++
++            if(bFarPoints && pMP->mTrackDepth>thFarPoints) {
++                if(diag) ++far;
++                continue;
++            }
++
++            if(pMP->isBad()) {
++                if(diag) ++bad;
++                continue;
++            }
+ 
+             if(pMP->mbTrackInView)
+             {
++                if(diag) ++counters[0].visible;
+                 const int &nPredictedLevel = pMP->mnTrackScaleLevel;
+ 
+                 // The size of the window will depend on the viewing direction
+@@ -75,7 +105,10 @@
+                 const vector<size_t> vIndices =
+                         F.GetFeaturesInArea(pMP->mTrackProjX,pMP->mTrackProjY,r*F.mvScaleFactors[nPredictedLevel],nPredictedLevel-1,nPredictedLevel);
+ 
++                if(diag) { counters[0].candidates += vIndices.size();
++                    if(vIndices.empty()) ++counters[0].empty; }
+                 if(!vIndices.empty()){
++                    int eligible=0, occupied=0;
+                     const cv::Mat MPdescriptor = pMP->GetDescriptor();
+ 
+                     int bestDist=256;
+@@ -90,16 +123,21 @@
+                         const size_t idx = *vit;
+ 
+                         if(F.mvpMapPoints[idx])
+-                            if(F.mvpMapPoints[idx]->Observations()>0)
++                            if(F.mvpMapPoints[idx]->Observations()>0) {
++                                if(diag) { ++counters[0].occupied; ++occupied; }
+                                 continue;
++                            }
+ 
+                         if(F.Nleft == -1 && F.mvuRight[idx]>0)
+                         {
+                             const float er = fabs(pMP->mTrackProjXR-F.mvuRight[idx]);
+-                            if(er>r*F.mvScaleFactors[nPredictedLevel])
++                            if(er>r*F.mvScaleFactors[nPredictedLevel]) {
++                                if(diag) ++counters[0].stereo_error;
+                                 continue;
+-                        }
+-
++                            }
++                        }
++
++                        if(diag) ++eligible;
+                         const cv::Mat &d = F.mDescriptors.row(idx);
+ 
+                         const int dist = DescriptorDistance(MPdescriptor,d);
+@@ -123,14 +161,27 @@
+                         }
+                     }
+ 
++                    if(diag) {
++                        if(eligible==0) {
++                            if(occupied==static_cast<int>(vIndices.size())) ++counters[0].occupied_only;
++                            else ++counters[0].geometry_only;
++                        } else if(bestDist>TH_HIGH) ++counters[0].descriptor;
++                        else if(bestLevel==bestLevel2 && bestDist>mfNNratio*bestDist2) ++counters[0].ratio;
++                    }
+                     // Apply ratio to second match (only if best and second are in the same scale level)
+                     if(bestDist<=TH_HIGH)
+                     {
+                         // no continue on ambiguity: cam1 below must still run
+                         if(bestLevel!=bestLevel2 || bestDist<=mfNNratio*bestDist2){
++                            if(diag) ++counters[0].accepted;
+                             F.mvpMapPoints[bestIdx]=pMP;
+ 
+                             if(F.Nleft != -1 && F.mvLeftToRightMatch[bestIdx] != -1){ //Also match with the stereo observation at right camera
++                                if(diag) {
++                                    ++counters[1].companion_written;
++                                    MapPoint* previous=F.mvpMapPoints[F.mvLeftToRightMatch[bestIdx]+F.Nleft];
++                                    if(previous && previous!=pMP && previous->Observations()>0) ++counters[1].companion_conflict;
++                                }
+                                 F.mvpMapPoints[F.mvLeftToRightMatch[bestIdx] + F.Nleft] = pMP;
+                                 nmatches++;
+                                 right++;
+@@ -144,7 +195,9 @@
+             }
+ 
+             if(F.Nleft != -1 && pMP->mbTrackInViewR){
++                if(diag) ++counters[1].visible;
+                 const int &nPredictedLevel = pMP->mnTrackScaleLevelR;
++                if(diag && nPredictedLevel==-1) ++counters[1].invalid_level;
+                 if(nPredictedLevel != -1){
+                     float r = RadiusByViewingCos(pMP->mTrackViewCosR);
+ 
+@@ -154,8 +207,11 @@
+                     const vector<size_t> vIndices =
+                             F.GetFeaturesInArea(pMP->mTrackProjXR,pMP->mTrackProjYR,r*F.mvScaleFactors[nPredictedLevel],nPredictedLevel-1,nPredictedLevel,true);
+ 
++                    if(diag) { counters[1].candidates += vIndices.size();
++                        if(vIndices.empty()) ++counters[1].empty; }
+                     if(vIndices.empty())
+                         continue;
++                    int eligible=0, occupied=0;
+ 
+                     const cv::Mat MPdescriptor = pMP->GetDescriptor();
+ 
+@@ -171,10 +227,13 @@
+                         const size_t idx = *vit;
+ 
+                         if(F.mvpMapPoints[idx + F.Nleft])
+-                            if(F.mvpMapPoints[idx + F.Nleft]->Observations()>0)
++                            if(F.mvpMapPoints[idx + F.Nleft]->Observations()>0) {
++                                if(diag) { ++counters[1].occupied; ++occupied; }
+                                 continue;
+-
+-
++                            }
++
++
++                        if(diag) ++eligible;
+                         const cv::Mat &d = F.mDescriptors.row(idx + F.Nleft);
+ 
+                         const int dist = DescriptorDistance(MPdescriptor,d);
+@@ -194,6 +253,11 @@
+                         }
+                     }
+ 
++                    if(diag) {
++                        if(eligible==0) ++counters[1].occupied_only;
++                        else if(bestDist>TH_HIGH) ++counters[1].descriptor;
++                        else if(bestLevel==bestLevel2 && bestDist>mfNNratio*bestDist2) ++counters[1].ratio;
++                    }
+                     // Apply ratio to second match (only if best and second are in the same scale level)
+                     if(bestDist<=TH_HIGH)
+                     {
+@@ -201,18 +265,42 @@
+                             continue;
+ 
+                         if(F.Nleft != -1 && F.mvRightToLeftMatch[bestIdx] != -1){ //Also match with the stereo observation at right camera
++                            if(diag) {
++                                ++counters[0].companion_written;
++                                MapPoint* previous=F.mvpMapPoints[F.mvRightToLeftMatch[bestIdx]];
++                                if(previous && previous!=pMP && previous->Observations()>0) ++counters[0].companion_conflict;
++                            }
+                             F.mvpMapPoints[F.mvRightToLeftMatch[bestIdx]] = pMP;
+                             nmatches++;
+                             left++;
+                         }
+ 
+ 
++                        if(diag) ++counters[1].accepted;
+                         F.mvpMapPoints[bestIdx + F.Nleft]=pMP;
+                         nmatches++;
+                         right++;
+                     }
+                 }
+             }
++        }
++        if(diag) {
++            std::ostringstream os;
++            os << "{\"not_visible\":" << not_visible << ",\"far\":" << far << ",\"bad\":" << bad
++               << ",\"th\":" << th << ",\"ratio\":" << mfNNratio << ",\"cams\":[";
++            for(int c=0; c<2; ++c) {
++                const auto& d=counters[c];
++                if(c) os << ',';
++                os << "{\"visible\":" << d.visible << ",\"empty\":" << d.empty
++                   << ",\"candidates\":" << d.candidates << ",\"occupied\":" << d.occupied
++                   << ",\"stereo_error\":" << d.stereo_error << ",\"occupied_only\":" << d.occupied_only
++                   << ",\"geometry_only\":" << d.geometry_only << ",\"descriptor\":" << d.descriptor
++                   << ",\"ratio\":" << d.ratio << ",\"accepted\":" << d.accepted
++                   << ",\"invalid_level\":" << d.invalid_level << ",\"companion_written\":" << d.companion_written
++                   << ",\"companion_conflict\":" << d.companion_conflict << '}';
++            }
++            os << "],\"returned_matches\":" << nmatches << '}';
++            localProjectionCounters=os.str();
+         }
+         return nmatches;
+     }
+@@ -1086,6 +1174,7 @@
+                         const cv::KeyPoint &kp2 = (pKF2 -> NLeft == -1) ? pKF2->mvKeysUn[bestIdx2]
+                                                                         : (bestIdx2 < pKF2 -> NLeft) ? pKF2 -> mvKeys[bestIdx2]
+                                                                                                      : pKF2 -> mvKeysRight[bestIdx2 - pKF2 -> NLeft];
++                        vbMatched2[bestIdx2]=true;
+                         vMatches12[idx1]=bestIdx2;
+                         nmatches++;
+ 
+@@ -1274,7 +1363,10 @@
+                 if(!sbExternalKp && (kpLevel<nPredictedLevel-1 || kpLevel>nPredictedLevel))
+                     continue;
+ 
+-                if(pKF->mvuRight[idx]>=0)
++                // Rectified disparity belongs only to the single-camera stereo path.
++                // Dual-camera candidates use their own camera projection above; a
++                // right-local idx must never index the left-only mvuRight array.
++                if(!pKF->mpCamera2 && pKF->mvuRight[idx]>=0)
+                 {
+                     // Check reprojection error in stereo
+                     const float &kpx = kp.pt.x;
+--- a/src/Optimizer.cc
++++ b/src/Optimizer.cc
+@@ -2210,6 +2210,13 @@
+     {
+         if(!vpMatches1[i])
+             continue;
++        // This solver's pose and projection edges refer to camera0. A pooled
++        // camera1 feature must not index camera0's keypoints or constrain its ray.
++        if(pKF1->NLeft != -1 && i >= pKF1->NLeft)
++        {
++            vpMatches1[i] = nullptr;
++            continue;
++        }
+ 
+         MapPoint* pMP1 = vpMapPoints1[i];
+         MapPoint* pMP2 = vpMatches1[i];
+@@ -2217,7 +2224,15 @@
+         const int id1 = 2*i+1;
+         const int id2 = 2*(i+1);
+ 
+-        const int i2 = get<0>(pMP2->GetIndexInKeyFrame(pKF2));
++        const auto indices2 = pMP2->GetIndexInKeyFrame(pKF2);
++        const int i2 = get<0>(indices2);
++        // A camera1-only observation is not a camera0 measurement. Keep the
++        // existing missing-neighbor observation path for genuinely absent KFs.
++        if(pKF2->mpCamera2 && i2 < 0 && get<1>(indices2) >= 0)
++        {
++            vpMatches1[i] = nullptr;
++            continue;
++        }
+ 
+         Eigen::Vector3f P3D1c;
+         Eigen::Vector3f P3D2c;
+@@ -2314,9 +2329,10 @@
+         }
+         else
+         {
+-            float invz = 1/P3D2c(2);
+-            float x = P3D2c(0)*invz;
+-            float y = P3D2c(1)*invz;
++            // The inverse Sim3 edge predicts image pixels, not X/Z,Y/Z.
++            const Eigen::Vector2f uv2 = pKF2->mpCamera->project(P3D2c);
++            const float x = uv2.x();
++            const float y = uv2.y();
+ 
+             obs2 << x, y;
+             kpUn2 = cv::KeyPoint(cv::Point2f(x, y), pMP2->mnTrackScaleLevel);
+@@ -3886,7 +3902,7 @@
+ 
+     const int nExpectedSize = (vpAdjustKF.size()+vpFixedKF.size())*vpMPs.size();
+ 
+-    vector<ORB_SLAM3::EdgeSE3ProjectXYZ*> vpEdgesMono;
++    vector<ORB_SLAM3::EdgeSE3ProjectXYZToBody*> vpEdgesMono;
+     vpEdgesMono.reserve(nExpectedSize);
+ 
+     vector<KeyFrame*> vpEdgeKFMono;
+@@ -3928,77 +3944,70 @@
+         const map<KeyFrame*,tuple<int,int>> observations = pMPi->GetObservations();
+         int nEdges = 0;
+         //SET EDGES
+-        for(map<KeyFrame*,tuple<int,int>>::const_iterator mit=observations.begin(); mit!=observations.end(); mit++)
+-        {
+-            KeyFrame* pKF = mit->first;
+-            if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForMerge != pMainKF->mnId || !pKF->GetMapPoint(get<0>(mit->second)))
++        for(const auto& observation : observations)
++        {
++            KeyFrame* pKF = observation.first;
++            if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForMerge != pMainKF->mnId)
+                 continue;
+ 
+-            nEdges++;
+-
+-            const cv::KeyPoint &kpUn = pKF->mvKeysUn[get<0>(mit->second)];
+-
+-            if(pKF->mvuRight[get<0>(mit->second)]<0) //Monocular
+-            {
+-                mpObsMPs[pMPi]++;
+-                Eigen::Matrix<double,2,1> obs;
+-                obs << kpUn.pt.x, kpUn.pt.y;
+-
+-                ORB_SLAM3::EdgeSE3ProjectXYZ* e = new ORB_SLAM3::EdgeSE3ProjectXYZ();
+-
+-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
+-                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
+-                e->setMeasurement(obs);
+-                const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+-                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+-
+-                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+-                e->setRobustKernel(rk);
+-                rk->setDelta(thHuber2D);
+-
+-                e->pCamera = pKF->mpCamera;
+-
+-                optimizer.addEdge(e);
+-
+-                vpEdgesMono.push_back(e);
+-                vpEdgeKFMono.push_back(pKF);
+-                vpMapPointEdgeMono.push_back(pMPi);
+-
+-                mpObsKFs[pKF]++;
+-            }
+-            else // RGBD or Stereo
+-            {
+-                mpObsMPs[pMPi]+=2;
+-                Eigen::Matrix<double,3,1> obs;
+-                const float kp_ur = pKF->mvuRight[get<0>(mit->second)];
+-                obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
+-
+-                g2o::EdgeStereoSE3ProjectXYZ* e = new g2o::EdgeStereoSE3ProjectXYZ();
+-
+-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
+-                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
+-                e->setMeasurement(obs);
+-                const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
+-                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
+-                e->setInformation(Info);
+-
+-                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+-                e->setRobustKernel(rk);
+-                rk->setDelta(thHuber3D);
+-
+-                e->fx = pKF->fx;
+-                e->fy = pKF->fy;
+-                e->cx = pKF->cx;
+-                e->cy = pKF->cy;
+-                e->bf = pKF->mbf;
+-
+-                optimizer.addEdge(e);
+-
+-                vpEdgesStereo.push_back(e);
+-                vpEdgeKFStereo.push_back(pKF);
+-                vpMapPointEdgeStereo.push_back(pMPi);
+-
+-                mpObsKFs[pKF]++;
++            for(int cam=0; cam<(pKF->mpCamera2 ? 2 : 1); ++cam)
++            {
++                const int index = cam ? get<1>(observation.second) : get<0>(observation.second);
++                if(index < 0 || pKF->GetMapPoint(index) != pMPi)
++                    continue;
++                const cv::KeyPoint& kp = cam ? pKF->mvKeysRight[index-pKF->NLeft]
++                                            : pKF->mvKeysUn[index];
++                const float invSigma2 = pKF->mvInvLevelSigma2[kp.octave];
++                ++nEdges;
++                ++mpObsKFs[pKF];
++
++                if(!pKF->mpCamera2 && pKF->mvuRight[index] >= 0)
++                {
++                    mpObsMPs[pMPi] += 2;
++                    Eigen::Vector3d obs(kp.pt.x, kp.pt.y, pKF->mvuRight[index]);
++                    auto* e = new g2o::EdgeStereoSE3ProjectXYZ();
++                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
++                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
++                    e->setMeasurement(obs);
++                    e->setInformation(Eigen::Matrix3d::Identity()*invSigma2);
++                    auto* rk = new g2o::RobustKernelHuber();
++                    e->setRobustKernel(rk);
++                    rk->setDelta(thHuber3D);
++                    e->fx = pKF->fx;
++                    e->fy = pKF->fy;
++                    e->cx = pKF->cx;
++                    e->cy = pKF->cy;
++                    e->bf = pKF->mbf;
++                    optimizer.addEdge(e);
++                    vpEdgesStereo.push_back(e);
++                    vpEdgeKFStereo.push_back(pKF);
++                    vpMapPointEdgeStereo.push_back(pMPi);
++                }
++                else
++                {
++                    ++mpObsMPs[pMPi];
++                    Eigen::Vector2d obs(kp.pt.x, kp.pt.y);
++                    auto* e = new ORB_SLAM3::EdgeSE3ProjectXYZToBody();
++                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
++                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
++                    e->setMeasurement(obs);
++                    e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
++                    auto* rk = new g2o::RobustKernelHuber();
++                    e->setRobustKernel(rk);
++                    rk->setDelta(thHuber2D);
++                    e->mTrl = g2o::SE3Quat();
++                    e->pCamera = pKF->mpCamera;
++                    if(cam)
++                    {
++                        const Sophus::SE3f Trl = pKF->GetRelativePoseTrl();
++                        e->mTrl = g2o::SE3Quat(Trl.unit_quaternion().cast<double>(), Trl.translation().cast<double>());
++                        e->pCamera = pKF->mpCamera2;
++                    }
++                    optimizer.addEdge(e);
++                    vpEdgesMono.push_back(e);
++                    vpEdgeKFMono.push_back(pKF);
++                    vpMapPointEdgeMono.push_back(pMPi);
++                }
+             }
+         }
+     }
+@@ -4023,7 +4032,7 @@
+         int badMonoMP = 0, badStereoMP = 0;
+         for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
+         {
+-            ORB_SLAM3::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
++            ORB_SLAM3::EdgeSE3ProjectXYZToBody* e = vpEdgesMono[i];
+             MapPoint* pMP = vpMapPointEdgeMono[i];
+ 
+             if(pMP->isBad())
+@@ -4068,7 +4077,7 @@
+     int badMonoMP = 0, badStereoMP = 0;
+     for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
+     {
+-        ORB_SLAM3::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
++        ORB_SLAM3::EdgeSE3ProjectXYZToBody* e = vpEdgesMono[i];
+         MapPoint* pMP = vpMapPointEdgeMono[i];
+ 
+         if(pMP->isBad())
+@@ -4128,20 +4137,17 @@
+             continue;
+ 
+         const map<KeyFrame*,tuple<int,int>> observations = pMPi->GetObservations();
+-        for(map<KeyFrame*,tuple<int,int>>::const_iterator mit=observations.begin(); mit!=observations.end(); mit++)
+-        {
+-            KeyFrame* pKF = mit->first;
+-            if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForKF != pMainKF->mnId || !pKF->GetMapPoint(get<0>(mit->second)))
++        for(const auto& observation : observations)
++        {
++            KeyFrame* pKF = observation.first;
++            if(pKF->isBad() || pKF->mnId>maxKFid || pKF->mnBALocalForMerge != pMainKF->mnId)
+                 continue;
+-
+-            if(pKF->mvuRight[get<0>(mit->second)]<0) //Monocular
+-            {
+-                mpObsFinalKFs[pKF]++;
+-            }
+-            else // RGBD or Stereo
+-            {
+-                mpObsFinalKFs[pKF]++;
+-            }
++            const int leftIndex = get<0>(observation.second);
++            const int rightIndex = get<1>(observation.second);
++            if(leftIndex >= 0 && pKF->GetMapPoint(leftIndex) == pMPi)
++                ++mpObsFinalKFs[pKF];
++            if(pKF->mpCamera2 && rightIndex >= 0 && pKF->GetMapPoint(rightIndex) == pMPi)
++                ++mpObsFinalKFs[pKF];
+         }
+     }
+ 
+@@ -4163,7 +4169,7 @@
+ 
+         for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
+         {
+-            ORB_SLAM3::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
++            ORB_SLAM3::EdgeSE3ProjectXYZToBody* e = vpEdgesMono[i];
+             MapPoint* pMP = vpMapPointEdgeMono[i];
+             KeyFrame* pKFedge = vpEdgeKFMono[i];
+ 
+@@ -4584,70 +4590,56 @@
+         const map<KeyFrame*,tuple<int,int>> observations = pMP->GetObservations();
+ 
+         // Create visual constraints
+-        for(map<KeyFrame*,tuple<int,int>>::const_iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+-        {
+-            KeyFrame* pKFi = mit->first;
+-
+-            if (!pKFi)
++        for(const auto& observation : observations)
++        {
++            KeyFrame* pKFi = observation.first;
++            if(!pKFi || pKFi->isBad())
+                 continue;
+-
+-            if ((pKFi->mnBALocalForKF!=pCurrKF->mnId) && (pKFi->mnBAFixedForKF!=pCurrKF->mnId))
++            if(pKFi->mnBALocalForKF != pCurrKF->mnId && pKFi->mnBAFixedForKF != pCurrKF->mnId)
+                 continue;
+-
+-            if (pKFi->mnId>maxKFid){
++            if(pKFi->mnId > maxKFid || !optimizer.vertex(id) || !optimizer.vertex(pKFi->mnId))
+                 continue;
+-            }
+-
+-
+-            if(optimizer.vertex(id)==NULL || optimizer.vertex(pKFi->mnId)==NULL)
+-                continue;
+-
+-            if(!pKFi->isBad())
+-            {
+-                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[get<0>(mit->second)];
+-
+-                if(pKFi->mvuRight[get<0>(mit->second)]<0) // Monocular observation
++
++            for(int cam=0; cam<(pKFi->mpCamera2 ? 2 : 1); ++cam)
++            {
++                const int index = cam ? get<1>(observation.second) : get<0>(observation.second);
++                if(index < 0)
++                    continue;
++                const cv::KeyPoint& kp = cam ? pKFi->mvKeysRight[index-pKFi->NLeft]
++                                            : pKFi->mvKeysUn[index];
++                const float invSigma2 = pKFi->mvInvLevelSigma2[kp.octave];
++
++                if(!pKFi->mpCamera2 && pKFi->mvuRight[index] >= 0)
+                 {
+-                    Eigen::Matrix<double,2,1> obs;
+-                    obs << kpUn.pt.x, kpUn.pt.y;
+-
+-                    EdgeMono* e = new EdgeMono();
++                    Eigen::Vector3d obs(kp.pt.x, kp.pt.y, pKFi->mvuRight[index]);
++                    auto* e = new EdgeStereo(0);
+                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
+                     e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
+                     e->setMeasurement(obs);
+-                    const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
++                    e->setInformation(Eigen::Matrix3d::Identity()*invSigma2);
++                    auto* rk = new g2o::RobustKernelHuber();
++                    e->setRobustKernel(rk);
++                    rk->setDelta(thHuberStereo);
++                    optimizer.addEdge(e);
++                    vpEdgesStereo.push_back(e);
++                    vpEdgeKFStereo.push_back(pKFi);
++                    vpMapPointEdgeStereo.push_back(pMP);
++                }
++                else
++                {
++                    Eigen::Vector2d obs(kp.pt.x, kp.pt.y);
++                    auto* e = new EdgeMono(cam);
++                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
++                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
++                    e->setMeasurement(obs);
+                     e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+-
+-                    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
++                    auto* rk = new g2o::RobustKernelHuber();
+                     e->setRobustKernel(rk);
+                     rk->setDelta(thHuberMono);
+                     optimizer.addEdge(e);
+                     vpEdgesMono.push_back(e);
+                     vpEdgeKFMono.push_back(pKFi);
+                     vpMapPointEdgeMono.push_back(pMP);
+-                }
+-                else // stereo observation
+-                {
+-                    const float kp_ur = pKFi->mvuRight[get<0>(mit->second)];
+-                    Eigen::Matrix<double,3,1> obs;
+-                    obs << kpUn.pt.x, kpUn.pt.y, kp_ur;
+-
+-                    EdgeStereo* e = new EdgeStereo();
+-
+-                    e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
+-                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
+-                    e->setMeasurement(obs);
+-                    const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
+-                    e->setInformation(Eigen::Matrix3d::Identity()*invSigma2);
+-
+-                    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+-                    e->setRobustKernel(rk);
+-                    rk->setDelta(thHuberStereo);
+-
+-                    optimizer.addEdge(e);
+-                    vpEdgesStereo.push_back(e);
+-                    vpEdgeKFStereo.push_back(pKFi);
+-                    vpMapPointEdgeStereo.push_back(pMP);
+                 }
+             }
+         }
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -411,3 +411,8 @@
+             Examples_old/Stereo-Inertial/stereo_inertial_realsense_D435i.cc)
+     target_link_libraries(stereo_inertial_realsense_D435i_old ${PROJECT_NAME})
+ endif()
++
++# Calibrated overlapping fisheye rig with metric temporal initialization.
++add_executable(stereo_lamaria_euroc Examples/Stereo-Inertial/stereo_lamaria_euroc.cc)
++target_link_libraries(stereo_lamaria_euroc ${PROJECT_NAME})
++set_target_properties(stereo_lamaria_euroc PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo-Inertial)
