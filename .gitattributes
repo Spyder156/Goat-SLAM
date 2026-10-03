@@ -1,0 +1,5 @@
+# Keep frozen snapshots byte-identical on every platform.
+* -text
+*.tar.xz binary
+*.png binary
+*.jpg binary
