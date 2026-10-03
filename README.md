@@ -29,6 +29,10 @@ continuous Long baseline separately. The evaluator scores the selected map;
 independent atlas maps must not be concatenated into a claimed full trajectory.
 Evaluation Sim(3) alignment is separate from raw metric-scale accuracy.
 
+The initial preservation snapshot is tagged `baseline-short-80.20`,
+`baseline-short-67.19`, and `baseline-long-49.88`. These tags retain the complete
+repository; their names identify which frozen profile to select.
+
 ## Verify and restore
 
 ```bash
@@ -47,6 +51,11 @@ vocabulary, Python environments, and multi-gigabyte Reruns are not included in
 Git. This is not a claim of a tested clean-machine rebuild or bitwise-repeatable
 SLAM runs. The historical builder defaults to the history profile, so select
 the v2 patch/build/config explicitly when reproducing the 80.20 result.
+
+Validation: restoration from a fresh Git clone, all 576 snapshot hashes, all
+three original-builder preflights, and loading all three restored executables
+in the recorded Docker image passed. `docs/PRESERVATION_CHECK.json` records the
+checks. No new full compilation or SLAM replay was performed for publication.
 
 ## Layout
 

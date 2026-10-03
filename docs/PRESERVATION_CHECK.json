@@ -1,0 +1,37 @@
+{
+  "clone": "/tmp/goat-slam-publish-b9jrupno/clone",
+  "restored": "/tmp/goat-slam-publish-b9jrupno/restored",
+  "profiles": {
+    "history": {
+      "baseline_validation": "passed",
+      "compile_units": 35,
+      "runner_sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66",
+      "library_sha256": "f50d9a99a882b379dd855d06ada83f4c32715c19a1ca226d1fd56194bc41ee0f",
+      "runtime_loader": "passed: expected usage exit without dataset"
+    },
+    "radial_fixed": {
+      "baseline_validation": "passed",
+      "compile_units": 35,
+      "runner_sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66",
+      "library_sha256": "49d36ab726b24eedb534097bdd5d24a10491ded89506e9298bfa16a080ed14e2",
+      "runtime_loader": "passed: expected usage exit without dataset"
+    },
+    "online_full_v2": {
+      "baseline_validation": "passed",
+      "compile_units": 35,
+      "runner_sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66",
+      "library_sha256": "7664755942310a1513cde99aeb47d3c48c4cf17a5412196b970b6315018c3414",
+      "runtime_loader": "passed: expected usage exit without dataset"
+    }
+  },
+  "checks": [
+    "fresh git clone",
+    "all snapshot hashes",
+    "safe restoration",
+    "three original-builder preflights",
+    "all frozen binary hashes",
+    "original binary hashes unchanged",
+    "existing destination refused",
+    "all three restored executables load in recorded Docker image; no SLAM replay"
+  ]
+}
