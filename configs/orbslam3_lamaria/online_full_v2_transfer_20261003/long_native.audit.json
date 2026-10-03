@@ -1,0 +1,399 @@
+{
+  "input": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/online_full_v2_transfer_20261003/long.yaml",
+  "output": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/online_full_v2_transfer_20261003/long_native.yaml",
+  "vrs": "/media/raghav/HardDrive1/Mecka/lamaria/sequence_3_17/sequence_3_17.vrs",
+  "source_sha256": "13d4dad03244404d5689503d7dc1a17af0c58a2412356ee9d5ccb8924f6e006b",
+  "output_sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c",
+  "changed_scalar_count": 32,
+  "lens_changes": [
+    {
+      "key": "Camera1.fx",
+      "old": 242.14880238861213,
+      "native": 241.6048925567284,
+      "delta": -0.5439098318837239
+    },
+    {
+      "key": "Camera1.fy",
+      "old": 242.27755466978078,
+      "native": 241.6048925567284,
+      "delta": -0.6726621130523824
+    },
+    {
+      "key": "Camera1.cx",
+      "old": 323.3510631802229,
+      "native": 322.895555771704,
+      "delta": -0.45550740851894034
+    },
+    {
+      "key": "Camera1.cy",
+      "old": 240.72593323351512,
+      "native": 240.4445599560633,
+      "delta": -0.28137327745182006
+    },
+    {
+      "key": "Camera1.k1",
+      "old": -0.026439271292494924,
+      "native": -0.02484243376501498,
+      "delta": 0.0015968375274799454
+    },
+    {
+      "key": "Camera1.k2",
+      "old": 0.1076564556687905,
+      "native": 0.09628938752134535,
+      "delta": -0.011367068147445147
+    },
+    {
+      "key": "Camera1.k3",
+      "old": -0.08361447963680996,
+      "native": -0.063325466945624,
+      "delta": 0.02028901269118595
+    },
+    {
+      "key": "Camera1.k4",
+      "old": 0.023365494846661457,
+      "native": 0.006200726341569274,
+      "delta": -0.017164768505092184
+    },
+    {
+      "key": "Camera1.k5",
+      "old": -0.003606160318518112,
+      "native": 0.003488761399963396,
+      "delta": 0.0070949217184815075
+    },
+    {
+      "key": "Camera1.k6",
+      "old": 0.00040607393577979736,
+      "native": -0.0007297520056856479,
+      "delta": -0.0011358259414654451
+    },
+    {
+      "key": "Camera1.p1",
+      "old": 0.0008213535738994786,
+      "native": 0.00089532032215904,
+      "delta": 7.396674825956137e-05
+    },
+    {
+      "key": "Camera1.p2",
+      "old": 5.703005808526606e-05,
+      "native": 0.000361066580790014,
+      "delta": 0.00030403652270474796
+    },
+    {
+      "key": "Camera1.s1",
+      "old": -0.0014106441212265338,
+      "native": -0.00136879244387001,
+      "delta": 4.185167735652382e-05
+    },
+    {
+      "key": "Camera1.s2",
+      "old": -2.855798821201806e-05,
+      "native": -0.0001054083415853531,
+      "delta": -7.685035337333504e-05
+    },
+    {
+      "key": "Camera1.s3",
+      "old": 0.0002600723112779912,
+      "native": -0.0004635611298488213,
+      "delta": -0.0007236334411268125
+    },
+    {
+      "key": "Camera1.s4",
+      "old": -6.488575742353891e-06,
+      "native": -0.0001049856461262643,
+      "delta": -9.84970703839104e-05
+    },
+    {
+      "key": "Camera2.fx",
+      "old": 241.64478540446956,
+      "native": 241.3272717603338,
+      "delta": -0.3175136441357722
+    },
+    {
+      "key": "Camera2.fy",
+      "old": 241.79703616415262,
+      "native": 241.3272717603338,
+      "delta": -0.46976440381882867
+    },
+    {
+      "key": "Camera2.cx",
+      "old": 322.12572790399315,
+      "native": 321.6189294210335,
+      "delta": -0.5067984829596526
+    },
+    {
+      "key": "Camera2.cy",
+      "old": 240.70308319078924,
+      "native": 239.6221110493106,
+      "delta": -1.0809721414786395
+    },
+    {
+      "key": "Camera2.k1",
+      "old": -0.023729503605228776,
+      "native": -0.02540327399199527,
+      "delta": -0.0016737703867664953
+    },
+    {
+      "key": "Camera2.k2",
+      "old": 0.09307706295168322,
+      "native": 0.09654066714494701,
+      "delta": 0.003463604193263789
+    },
+    {
+      "key": "Camera2.k3",
+      "old": -0.05715060830142177,
+      "native": -0.06397303271827755,
+      "delta": -0.00682242441685578
+    },
+    {
+      "key": "Camera2.k4",
+      "old": 0.00013395212779660024,
+      "native": 0.006223153894704157,
+      "delta": 0.006089201766907556
+    },
+    {
+      "key": "Camera2.k5",
+      "old": 0.0060638501934583006,
+      "native": 0.003741072868202308,
+      "delta": -0.0023227773252559925
+    },
+    {
+      "key": "Camera2.k6",
+      "old": -0.0011176438334750405,
+      "native": -0.0007998563476126205,
+      "delta": 0.00031778748586242
+    },
+    {
+      "key": "Camera2.p1",
+      "old": 0.0011283431322407296,
+      "native": 0.001725615932096635,
+      "delta": 0.0005972727998559053
+    },
+    {
+      "key": "Camera2.p2",
+      "old": -0.0007061686973313397,
+      "native": -0.0009989475964546615,
+      "delta": -0.00029277889912332185
+    },
+    {
+      "key": "Camera2.s1",
+      "old": -0.0017677194600447836,
+      "native": -0.002626656620305424,
+      "delta": -0.0008589371602606404
+    },
+    {
+      "key": "Camera2.s2",
+      "old": 0.00029702928967023683,
+      "native": 4.621087294408381e-05,
+      "delta": -0.000250818416726153
+    },
+    {
+      "key": "Camera2.s3",
+      "old": 0.0004198273675046757,
+      "native": 0.001412977671638857,
+      "delta": 0.0009931503041341813
+    },
+    {
+      "key": "Camera2.s4",
+      "old": -0.00020166372218595685,
+      "native": -8.439958970429877e-05,
+      "delta": 0.00011726413248165808
+    }
+  ],
+  "extrinsics": {
+    "Rig.T_c0_c1": {
+      "native": [
+        [
+          0.9984876124575768,
+          -0.042551807054852175,
+          0.03481137005540907,
+          0.004166885834909222
+        ],
+        [
+          0.044484675180907,
+          0.25325675441293216,
+          -0.9663757706080369,
+          -0.1086091834288939
+        ],
+        [
+          0.03230482073649683,
+          0.9664628084207869,
+          0.25476663536771926,
+          -0.08462561660510322
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "existing": [
+        [
+          0.9984875917434692,
+          -0.042551808059215546,
+          0.03481137007474899,
+          0.004166886210441589
+        ],
+        [
+          0.04448467493057251,
+          0.25325676798820496,
+          -0.9663757681846619,
+          -0.10860918462276459
+        ],
+        [
+          0.03230481967329979,
+          0.9664627909660339,
+          0.25476664304733276,
+          -0.08462561666965485
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "max_abs_error": 2.0714107540342752e-08,
+      "preserved": true
+    },
+    "Stereo.T_c1_c2": {
+      "native": [
+        [
+          0.9984876124575768,
+          -0.042551807054852175,
+          0.03481137005540907,
+          0.004166885834909222
+        ],
+        [
+          0.044484675180907,
+          0.25325675441293216,
+          -0.9663757706080369,
+          -0.1086091834288939
+        ],
+        [
+          0.03230482073649683,
+          0.9664628084207869,
+          0.25476663536771926,
+          -0.08462561660510322
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "existing": [
+        [
+          0.9984875917434692,
+          -0.042551808059215546,
+          0.03481137007474899,
+          0.004166886210441589
+        ],
+        [
+          0.04448467493057251,
+          0.25325676798820496,
+          -0.9663757681846619,
+          -0.10860918462276459
+        ],
+        [
+          0.03230481967329979,
+          0.9664627909660339,
+          0.25476664304733276,
+          -0.08462561666965485
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "max_abs_error": 2.0714107540342752e-08,
+      "preserved": true
+    },
+    "IMU.T_b_c1": {
+      "native": [
+        [
+          0.9801117879361859,
+          0.19763546799267404,
+          0.017919401213481997,
+          0.01678296927310889
+        ],
+        [
+          0.06710763454797422,
+          -0.2451071427996592,
+          -0.9671706436477291,
+          -0.10892921838506502
+        ],
+        [
+          -0.18675504955397748,
+          0.9491378774129202,
+          -0.2534952487250743,
+          0.07605583988186103
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "existing": [
+        [
+          0.9801117777824402,
+          0.1976354718208313,
+          0.017919400706887245,
+          0.0167829692363739
+        ],
+        [
+          0.06710763275623322,
+          -0.24510714411735535,
+          -0.9671706557273865,
+          -0.10892921686172485
+        ],
+        [
+          -0.18675504624843597,
+          0.9491378664970398,
+          -0.2534952461719513,
+          0.07605583965778351
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "max_abs_error": 1.207965738547756e-08,
+      "preserved": true
+    }
+  },
+  "baseline_m": {
+    "native": 0.137749093094823,
+    "existing": 0.137749,
+    "preserved": true
+  },
+  "rates_hz": {
+    "camera-slam-left": 20.0,
+    "camera-slam-right": 20.0,
+    "imu-right": 1000.0
+  },
+  "all_nonlens_lines_preserved": true,
+  "eight_method_settings_preserved": true,
+  "existing_geometry_residual_atol": 1e-06,
+  "ground_truth_used": false,
+  "reason": "Inherited long calibration differs from native VRS in all32 lens scalars and violates singlefocal calibration contract; restore native input lens model required by online_full_v2. No source or old attempt edited.",
+  "inherited_non_native_intrinsics_provenance": {
+    "exact_match_file": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/calib_refine/native_sequence_3_17/refined_native.json",
+    "sha256": "111d37727c74d28a35ada5082dbccc67b67b594ef855391e5077c63f31885ce6",
+    "all32_scalars_equal": true,
+    "description": "Earlier native-image COLMAP/SIFT refinement stored independent fx/fy. It was inherited through bench_basalt/orbslam/lamaria_3_17_rig_aliked.yaml and lamaria_audit_20261001/inputs/active_lamaria_3_17_rig_aliked.yaml into native_stereo/lamaria_stereo.yaml and longbaseline. Native names referred to image domain, not unchanged factory parameters.",
+    "logs_directory": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/calib_refine/native_sequence_3_17",
+    "log_date": "2026-09-30",
+    "first_full_online_trial_exception": "std::invalid_argument: Expected native single-focal Fisheye624",
+    "throw_location": "build/orbslam3_lamaria_online_full_v2/sources/include/G2oFullCalibration.h:51",
+    "factory_snapshot_location": "build/orbslam3_lamaria_online_full_v2/sources/src/Tracking.cc:1724",
+    "failed_attempt_preserved": true
+  }
+}

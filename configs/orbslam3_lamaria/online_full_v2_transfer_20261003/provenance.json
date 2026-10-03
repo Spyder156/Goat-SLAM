@@ -1,0 +1,43 @@
+{
+  "method_source": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_online_full_v2_short_full_20261003/short_full/settings.yaml",
+  "method_source_sha256": "b75b3c555e06646bafe4a00fedcfed4ec19a958678a9a8f248db8b7b6f0f2757",
+  "records": {
+    "medium": {
+      "calibration_source": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_medium_2_11_20261002/config/settings.yaml",
+      "calibration_source_sha256": "f91e19d018459c58fe3fa101765bd3b9fcbff446cddef00e5574651af2c8cbd0",
+      "output": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/online_full_v2_transfer_20261003/medium.yaml",
+      "output_sha256": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931",
+      "only_added_method_settings": {
+        "Camera1.validRadius": "330",
+        "Camera1.maxSolidAngle": "1.3999999999999999",
+        "Camera2.validRadius": "330",
+        "Camera2.maxSolidAngle": "1.3999999999999999",
+        "Init.radialCalibrationMode": "1",
+        "Init.metricMinSeconds": "12.0",
+        "Calibration.fullOnline": "1",
+        "Calibration.intervalSeconds": "60.0"
+      },
+      "factory_calibration_unchanged": true
+    },
+    "long": {
+      "calibration_source": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002/config/settings.yaml",
+      "calibration_source_sha256": "5c9a16293a8715d5c756f199ae240d7df8203a55c6deee273ccc7868f5e70786",
+      "output": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/online_full_v2_transfer_20261003/long.yaml",
+      "output_sha256": "13d4dad03244404d5689503d7dc1a17af0c58a2412356ee9d5ccb8924f6e006b",
+      "only_added_method_settings": {
+        "Camera1.validRadius": "330",
+        "Camera1.maxSolidAngle": "1.3999999999999999",
+        "Camera2.validRadius": "330",
+        "Camera2.maxSolidAngle": "1.3999999999999999",
+        "Init.radialCalibrationMode": "1",
+        "Init.metricMinSeconds": "12.0",
+        "Calibration.fullOnline": "1",
+        "Calibration.intervalSeconds": "60.0"
+      },
+      "input_calibration_unchanged": true,
+      "calibration_origin_correction": "The inherited long input was subsequently verified to match prior COLMAP-refined intrinsics, not native factory intrinsics. That attempt failed the single-focal contract. The corrected native run is documented in long_native.audit.json."
+    }
+  },
+  "ground_truth_used": false,
+  "native_long_config_audit": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/online_full_v2_transfer_20261003/long_native.audit.json"
+}

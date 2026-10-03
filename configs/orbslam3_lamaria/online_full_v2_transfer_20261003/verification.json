@@ -1,0 +1,7 @@
+{
+  "runner_sha256": "a0efe826e73155b3f307882cb5176ec630eca9bd2147cba04cbcd395eec93f66",
+  "library_sha256": "7664755942310a1513cde99aeb47d3c48c4cf17a5412196b970b6315018c3414",
+  "image_id": "sha256:e81cd138e05acfdfccb29585a1d8923f33e04d1ce087a461203130befa3524f1",
+  "identical_to_saved_80_20_build": true,
+  "independent_native_domain_check": "replicate80_setup independently verified long VRS radius330/angle1.4 and medium existing native domain manifest"
+}

@@ -1,0 +1,9 @@
+{
+  "source_config": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/valid_domain_20261003/short.yaml",
+  "source_sha256": "8b3f27ed170e856d302bdbf7e5724a483c6258802b12a7974f5c3d8bc244278d",
+  "initialization_minimum_seconds": 12.0,
+  "only_treatment_difference": "Init.radialCalibrationMode 1 vs 2",
+  "shared_changes": "Native valid-domain rejection + joint metric initializer + same heldout split + paused input during first init",
+  "no_GT_fed_estimator": true,
+  "official_scoring_calibration": "unchanged factory calibration"
+}

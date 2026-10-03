@@ -1,0 +1,43 @@
+{
+  "vrs": "/media/raghav/HardDrive1/Mecka/lamaria/sequence_2_11/sequence_2_11.vrs",
+  "source_config": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_init_control_medium_20261003/medium_startup/settings.yaml",
+  "source_config_sha256": "f91e19d018459c58fe3fa101765bd3b9fcbff446cddef00e5574651af2c8cbd0",
+  "output_config": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/configs/orbslam3_lamaria/valid_domain_20261003/medium.yaml",
+  "output_config_sha256": "cd6a0778a2e2e70fdf02836e2fd8357541a5275a22a550c23f7290f2f445ba90",
+  "cameras": [
+    {
+      "label": "camera-slam-left",
+      "camera": 1,
+      "resolution": [
+        640,
+        480
+      ],
+      "principal_point": [
+        322.895555771704,
+        240.4445599560633
+      ],
+      "valid_radius_native_px": 330.0,
+      "max_solid_angle_rad": 1.4,
+      "intrinsics_max_abs_difference": 0.0
+    },
+    {
+      "label": "camera-slam-right",
+      "camera": 2,
+      "resolution": [
+        640,
+        480
+      ],
+      "principal_point": [
+        321.6189294210335,
+        239.6221110493106
+      ],
+      "valid_radius_native_px": 330.0,
+      "max_solid_angle_rad": 1.4,
+      "intrinsics_max_abs_difference": 0.0
+    }
+  ],
+  "intrinsics_modified": false,
+  "ground_truth_used": false,
+  "circle_center": "principal point",
+  "radius_units": "native image pixels"
+}
