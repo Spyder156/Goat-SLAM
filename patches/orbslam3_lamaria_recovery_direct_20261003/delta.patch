@@ -1,0 +1,293 @@
+--- a/include/ORBmatcher.h
++++ b/include/ORBmatcher.h
+@@ -68,6 +68,18 @@
+         int SearchByBoW(KeyFrame *pKF, Frame &F, std::vector<MapPoint*> &vpMapPointMatches);
+         int SearchByBoW(KeyFrame *pKF1, KeyFrame* pKF2, std::vector<MapPoint*> &vpMatches12);
+ 
++        struct DirectRecoveryStats {
++            size_t comparisons=0;
++            int mappedRows=0, distancePass[2]={0,0}, ratioPass[2]={0,0};
++            int uniquePass[2]={0,0}, accepted[2]={0,0};
++            bool rejectedInput=false;
++        };
++        // Existing 256-bit descriptors, without ORB vocabulary partitions.
++        // Same TH_LOW, ratio and orientation gates; one feature/landmark/camera.
++        int SearchByDescriptor(KeyFrame* pKF, Frame& F,
++                               std::vector<MapPoint*>& matches,
++                               DirectRecoveryStats* diagnostics=nullptr);
++
+         // Matching for the Map Initialization (only used in the monocular case)
+         int SearchForInitialization(Frame &F1, Frame &F2, std::vector<cv::Point2f> &vbPrevMatched, std::vector<int> &vnMatches12, int windowSize=10);
+ 
+@@ -104,4 +116,4 @@
+ 
+ }// namespace ORB_SLAM
+ 
+-#endif // ORBMATCHER_H
+\ No newline at end of file
++#endif // ORBMATCHER_H
+--- a/include/TrackingStateRollback.h
++++ b/include/TrackingStateRollback.h
+@@ -15,6 +15,10 @@
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  Sophus::SE3f pose;Eigen::Vector3f velocity;IMU::Bias bias;
+  explicit TrackingStateRollback(Frame& frame):pose(frame.GetPose()),velocity(frame.GetVelocity()),bias(frame.mImuBias){}
++ // A provisional relatch refreshes grace only after local-map acceptance.
++ void finishRelatch(Frame& frame,bool accepted,double& lostSince)const{
++  if(accepted)lostSince=frame.mTimeStamp;else restore(frame);
++ }
+  void restore(Frame& frame)const{
+   frame.SetPose(pose);frame.SetVelocity(velocity);frame.mImuBias=bias;
+   if(frame.mpcpi){delete frame.mpcpi;frame.mpcpi=nullptr;}
+--- a/src/ORBmatcher.cc
++++ b/src/ORBmatcher.cc
+@@ -311,6 +311,116 @@
+             return 2.5;
+         else
+             return 4.0;
++    }
++
++    int ORBmatcher::SearchByDescriptor(KeyFrame* pKF, Frame& F,
++                                      vector<MapPoint*>& matches,
++                                      DirectRecoveryStats* diagnostics)
++    {
++        DirectRecoveryStats local;
++        DirectRecoveryStats& stats=diagnostics ? *diagnostics : local;
++        stats=DirectRecoveryStats();
++        matches.assign(std::max(0,F.N),nullptr);
++        // Explicit work bound. Real ALIKED caches have <=1500 features/lens.
++        // Reject malformed/oversized input, never silently truncate a camera.
++        if(!pKF || pKF->isBad() || F.N<=0 || F.N>4096 ||
++           pKF->mDescriptors.rows>4096 || F.mDescriptors.type()!=CV_8U ||
++           pKF->mDescriptors.type()!=CV_8U || F.mDescriptors.cols!=32 ||
++           pKF->mDescriptors.cols!=32 || F.mDescriptors.rows<F.N ||
++           (F.Nleft!=-1 && (F.Nleft<0 || F.Nleft>F.N))) {
++            stats.rejectedInput=true; return 0;
++        }
++        const bool rig=F.Nleft>=0 && F.mpCamera2;
++        const int cameraCount=rig ? 2 : 1;
++        const vector<MapPoint*> points=pKF->GetMapPointMatches();
++        auto sourceKey=[&](int i)->const cv::KeyPoint* {
++            if(pKF->mpCamera2 && pKF->NLeft>=0) {
++                if(i>=pKF->NLeft) {
++                    const size_t j=i-pKF->NLeft;
++                    return j<pKF->mvKeysRight.size() ? &pKF->mvKeysRight[j] : nullptr;
++                }
++                return static_cast<size_t>(i)<pKF->mvKeys.size() ? &pKF->mvKeys[i] : nullptr;
++            }
++            return static_cast<size_t>(i)<pKF->mvKeysUn.size() ? &pKF->mvKeysUn[i] : nullptr;
++        };
++        auto targetKey=[&](int i)->const cv::KeyPoint* {
++            if(rig && i>=F.Nleft) {
++                const size_t j=i-F.Nleft;
++                return j<F.mvKeysRight.size() ? &F.mvKeysRight[j] : nullptr;
++            }
++            return static_cast<size_t>(i)<F.mvKeys.size() ? &F.mvKeys[i] : nullptr;
++        };
++        vector<int> rows;
++        cv::Mat descriptors;
++        for(int i=0;i<pKF->mDescriptors.rows && static_cast<size_t>(i)<points.size();++i) {
++            if(!points[i] || points[i]->isBad() || !sourceKey(i)) continue;
++            rows.push_back(i);descriptors.push_back(pKF->mDescriptors.row(i));
++        }
++        stats.mappedRows=rows.size();
++        if(rows.empty()) return 0;
++        struct Proposal { int source,target,distance,camera; };
++        vector<Proposal> proposals;
++        // OpenCV's exact Hamming kernel is SIMD accelerated. No approximate
++        // index, vocabulary, learned float descriptor or image-space gate.
++        cv::BFMatcher brute(cv::NORM_HAMMING,false);
++        for(int camera=0;camera<cameraCount;++camera) {
++            const int begin=camera==0 ? 0 : F.Nleft;
++            const int end=rig && camera==0 ? F.Nleft : F.N;
++            if(end<=begin) continue;
++            stats.comparisons+=rows.size()*static_cast<size_t>(end-begin);
++            vector<vector<cv::DMatch> > neighbours;
++            brute.knnMatch(descriptors,F.mDescriptors.rowRange(begin,end),neighbours,2);
++            for(size_t row=0;row<neighbours.size();++row) {
++                if(neighbours[row].empty()) continue;
++                const auto& best=neighbours[row][0];
++                const int distance=static_cast<int>(best.distance);
++                if(distance>TH_LOW) continue;
++                ++stats.distancePass[camera];
++                const int second=neighbours[row].size()>1 ? static_cast<int>(neighbours[row][1].distance) : 256;
++                if(!(distance<mfNNratio*second)) continue;
++                ++stats.ratioPass[camera];
++                const int target=begin+best.trainIdx;
++                if(target<begin || target>=end || !targetKey(target)) continue;
++                proposals.push_back({rows[row],target,distance,camera});
++            }
++        }
++        // Deterministic ownership; duplicate KF observations cannot give one
++        // landmark two different current-image features in the same camera.
++        std::sort(proposals.begin(),proposals.end(),[](const Proposal& a,const Proposal& b) {
++            if(a.distance!=b.distance)return a.distance<b.distance;
++            if(a.source!=b.source)return a.source<b.source;
++            return a.target<b.target;
++        });
++        std::set<MapPoint*> used[2];
++        vector<int> histogram[HISTO_LENGTH];
++        const float factor=1.0f/HISTO_LENGTH; // existing orientation convention
++        for(const auto& proposal:proposals) {
++            MapPoint* point=points[proposal.source];
++            if(point->isBad() || matches[proposal.target] || used[proposal.camera].count(point))continue;
++            matches[proposal.target]=point;used[proposal.camera].insert(point);
++            ++stats.uniquePass[proposal.camera];
++            if(mbCheckOrientation) {
++                float rotation=sourceKey(proposal.source)->angle-targetKey(proposal.target)->angle;
++                if(rotation<0.f)rotation+=360.f;
++                int bin=std::round(rotation*factor);
++                if(bin==HISTO_LENGTH)bin=0;
++                if(bin<0 || bin>=HISTO_LENGTH) { matches[proposal.target]=nullptr;continue; }
++                histogram[bin].push_back(proposal.target);
++            }
++        }
++        if(mbCheckOrientation) {
++            int first=-1,second=-1,third=-1;
++            ComputeThreeMaxima(histogram,HISTO_LENGTH,first,second,third);
++            for(int bin=0;bin<HISTO_LENGTH;++bin) {
++                if(bin==first || bin==second || bin==third)continue;
++                for(int target:histogram[bin])matches[target]=nullptr;
++            }
++        }
++        int count=0;
++        for(size_t i=0;i<matches.size();++i)if(matches[i]) {
++            ++stats.accepted[rig && i>=static_cast<size_t>(F.Nleft) ? 1 : 0];++count;
++        }
++        return count;
+     }
+ 
+     int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPointMatches)
+--- a/src/Tracking.cc
++++ b/src/Tracking.cc
+@@ -2990,6 +2990,9 @@
+ 
+ void Tracking::Track()
+ {
++    // Frame-local transaction: a recovered visual hypothesis remains tentative
++    // until the normal local-map optimizer confirms it.
++    std::unique_ptr<TrackingStateRollback> relatchPrediction;
+     if(mnMapDiagFrames > 0){
+         mnMapDiagFrames--;
+         std::cout << "[MAP-DIAG] frame " << mCurrentFrame.mnId
+@@ -3219,9 +3222,11 @@
+                                     if(mCurrentFrame.mvpMapPoints[i])
+                                         ++associationsBeforeRelatch[mCurrentFrame.Nleft!=-1 && i>=mCurrentFrame.Nleft ? 1 : 0];
+                             }
++                            relatchPrediction.reset(new TrackingStateRollback(mCurrentFrame));
+                             const bool relatchSucceeded=TryCoastRelatch();
+-                            if(relatchSucceeded)
+-                                mTimeStampLost = mCurrentFrame.mTimeStamp; // fresh grace
++                            if(!relatchSucceeded) relatchPrediction.reset();
++                            // Keep the original lost timestamp until local-map
++                            // confirmation. An unconfirmed pose cannot buy grace.
+                             if(diagnosticRelatch) {
+                                 const Sophus::SE3f poseAfterRelatch=mCurrentFrame.GetPose();
+                                 int associationsAfterRelatch[2]={0,0}, inliersAfterRelatch[2]={0,0};
+@@ -3248,7 +3253,7 @@
+                             }
+                         }
+ 
+-                        if (mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost)
++                        if (mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost && !relatchPrediction)
+                         {
+                             mState = LOST;
+                             Verbose::PrintMess("Track Lost...", Verbose::VERBOSITY_NORMAL);
+@@ -3395,6 +3400,19 @@
+             // the camera we will use the local map again.
+             if(bOK && !mbVO)
+                 bOK = TrackLocalMap();
++        }
++
++        if(relatchPrediction) {
++            // TrackLocalMap's own v2 snapshot is after visual relatching. This
++            // outer boundary restores the true IMU prediction on rejection.
++            relatchPrediction->finishRelatch(mCurrentFrame,bOK,mTimeStampLost);
++            if(!bOK && mCurrentFrame.mTimeStamp-mTimeStampLost>time_recently_lost)
++                mState=LOST;
++            if(LocalMatchDiagnosticsEnabled())
++                std::cout << "[RELATCH_TRANSACTION] t=" << std::setprecision(12)
++                          << mCurrentFrame.mTimeStamp << " committed=" << bOK
++                          << " lost_since=" << mTimeStampLost
++                          << " restored_prediction=" << !bOK << std::endl;
+         }
+ 
+         if(bOK)
+@@ -5431,10 +5449,10 @@
+     return true;
+ }
+ 
+-/// BoW match + MLPnP RANSAC + pose optimisation of mCurrentFrame against an
++/// Direct binary-descriptor match + MLPnP RANSAC + pose optimisation against an
+ /// EXPLICIT keyframe set. This is the body of Relocalization(); the coast
+ /// re-latch calls it with the keyframes from just before a visual dropout,
+-/// so re-latching is drift-independent (BoW, not projection from the possibly
++/// so re-latching is drift-independent (descriptor search, not projection from the possibly
+ /// drifted IMU pose). Expects mCurrentFrame.ComputeBoW() already done.
+ /// On success mCurrentFrame holds the vision pose and its map-point matches;
+ /// does NOT touch mnLastRelocFrameId (the reloc-specific IMU-reset machinery
+@@ -5458,12 +5476,26 @@
+     const int cameraCount=rig ? 2 : 1;
+     std::vector<std::vector<MapPoint*> > matches(vpCandidateKFs.size());
+     std::vector<Hypothesis> hypotheses;
+-    int bestCameraMatches[2]={0,0}, solvedHypotheses[2]={0,0}, bestVerified=0;
++    int bestCameraMatches[2]={0,0}, bestBowMatches[2]={0,0}, solvedHypotheses[2]={0,0}, bestVerified=0;
++    int testedCandidates=0, invalidInputs=0, belowTotalGate=0, mappedRows=0;
++    int distancePass[2]={0,0}, ratioPass[2]={0,0}, uniquePass[2]={0,0};
++    size_t comparisons=0;
++    const size_t candidateLimit=11; // anchor + the existing ten covisible KFs
++    const auto recoveryStart=std::chrono::steady_clock::now();
+     auto logRecovery=[&](bool success, int camera) {
+         if(!std::getenv("LAMARIA_MATCH_DIAGNOSTICS")) return;
+         std::cout << "[RECOVERY_DIAG] t=" << std::setprecision(12) << mCurrentFrame.mTimeStamp
+-                  << " candidates=" << vpCandidateKFs.size() << " bow_cam0=" << bestCameraMatches[0]
+-                  << " bow_cam1=" << bestCameraMatches[1] << " hypotheses=" << hypotheses.size()
++                  << " candidates=" << vpCandidateKFs.size() << " tested_candidates=" << testedCandidates
++                  << " candidate_limit=" << candidateLimit << " descriptor=binary256_hamming"
++                  << " bow_cam0=" << bestBowMatches[0] << " bow_cam1=" << bestBowMatches[1]
++                  << " direct_cam0=" << bestCameraMatches[0] << " direct_cam1=" << bestCameraMatches[1]
++                  << " mapped_rows=" << mappedRows << " comparisons=" << comparisons
++                  << " distance_pass0=" << distancePass[0] << " distance_pass1=" << distancePass[1]
++                  << " ratio_pass0=" << ratioPass[0] << " ratio_pass1=" << ratioPass[1]
++                  << " unique_pass0=" << uniquePass[0] << " unique_pass1=" << uniquePass[1]
++                  << " invalid_inputs=" << invalidInputs << " below_total_gate=" << belowTotalGate
++                  << " milliseconds=" << std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-recoveryStart).count()
++                  << " hypotheses=" << hypotheses.size()
+                   << " solved_cam0=" << solvedHypotheses[0] << " solved_cam1=" << solvedHypotheses[1]
+                   << " best_verified=" << bestVerified << " success=" << success << " camera=" << camera << std::endl;
+     };
+@@ -5471,14 +5503,32 @@
+     for(size_t i=0; i<vpCandidateKFs.size(); ++i) {
+         KeyFrame* keyFrame=vpCandidateKFs[i];
+         if(!keyFrame || keyFrame->isBad()) continue;
+-        const int total=matcher.SearchByBoW(keyFrame,mCurrentFrame,matches[i]);
+-        if(total<15) continue;
++        if(testedCandidates>=static_cast<int>(candidateLimit))break;
++        ++testedCandidates;
++        if(std::getenv("LAMARIA_MATCH_DIAGNOSTICS")) {
++            // Diagnostic only: count raw BoW matches even below its old 15 gate.
++            std::vector<MapPoint*> bowMatches;
++            matcher.SearchByBoW(keyFrame,mCurrentFrame,bowMatches);
++            int count[2]={0,0};
++            for(size_t j=0;j<bowMatches.size();++j)if(bowMatches[j] && !bowMatches[j]->isBad())
++                ++count[rig && j>=static_cast<size_t>(mCurrentFrame.Nleft) ? 1 : 0];
++            for(int camera=0;camera<cameraCount;++camera)
++                bestBowMatches[camera]=std::max(bestBowMatches[camera],count[camera]);
++        }
++        ORBmatcher::DirectRecoveryStats stats;
++        const int total=matcher.SearchByDescriptor(keyFrame,mCurrentFrame,matches[i],&stats);
++        mappedRows+=stats.mappedRows;comparisons+=stats.comparisons;invalidInputs+=stats.rejectedInput;
++        for(int camera=0;camera<cameraCount;++camera) {
++            distancePass[camera]+=stats.distancePass[camera];ratioPass[camera]+=stats.ratioPass[camera];
++            uniquePass[camera]+=stats.uniquePass[camera];
++        }
+         int cameraMatches[2]={0,0};
+         for(size_t j=0; j<matches[i].size(); ++j)
+             if(matches[i][j] && !matches[i][j]->isBad())
+                 ++cameraMatches[rig && j>=static_cast<size_t>(mCurrentFrame.Nleft) ? 1 : 0];
+         for(int camera=0; camera<cameraCount; ++camera)
+             bestCameraMatches[camera]=std::max(bestCameraMatches[camera],cameraMatches[camera]);
++        if(total<15) { ++belowTotalGate;continue; }
+         for(int camera=0; camera<cameraCount; ++camera) {
+             if(cameraMatches[camera]<10) continue;
+             Hypothesis h;
