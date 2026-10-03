@@ -1,0 +1,15 @@
+{
+  "baseline_build_manifest_sha256": "14de111eff356352b60bd4875a0f1652b43dadc59635b322cc6278fadc98b9c3",
+  "baseline_patch_sha256": "0eec68e5e399d0dc101b7f3591900a0aae38a375e423814922bd836781f533a1",
+  "modified_sources": {
+    "src/LocalMapping.cc": "16d3eeb64e18b61495e23461b1403e97cb9a787068ad11902025bb748d8b68dd",
+    "src/G2oTypes.cc": "143748bee8cca72b0343f0a10d66965cdc08d1475bfa12362aa91f5f40a6e83a",
+    "src/Tracking.cc": "ae81367a7c1f69f8240ae326decae451d24f35d02bb7d05f96088fea3bce747a",
+    "src/Optimizer.cc": "43bc7526e2977788a47d3e1b28c0206cd38e79bfa506c773fcb889afe16a5004",
+    "include/G2oTypes.h": "9880be7042bba7b92062f6385c21412191e037a53e580dade69f09784ea7c501",
+    "include/Optimizer.h": "d8356b94bd26188cc4ea6bbe3be2bb9b41277ef2b087e0339cb6912b97b9c17b",
+    "include/LocalMapping.h": "9d9b59590b45acae3274f390a01c51e4d5369d478f6529e86b6ac22686a7fdbc",
+    "include/MetricInertialInitialization.h": "762545388a5fe36ee1e610b58959ceddc07c2d520f231d5a910c4840257cd7b5"
+  },
+  "public_headers_changed_from_baseline": true
+}

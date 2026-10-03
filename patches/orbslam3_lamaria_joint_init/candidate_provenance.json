@@ -1,0 +1,12 @@
+{
+  "base": "orbslam3_lamaria_metric_init",
+  "base_manifest_sha256": "731065887443d42c33d202edc6f10c6c646ce4719f909b2a3fae0fff3bb381cf",
+  "stage": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/build/lamaria_joint_init_staging",
+  "modified_sources": {
+    "src/LocalMapping.cc": "ceb98f46a9e01009cc5ed39c997c4d1a016163b9655b62a17682bcf8d0b4cefb",
+    "src/Tracking.cc": "d35b8d03c6c95fd26ebac11df02b6e805afa6b0a3797139c38bb51cb895bcb83",
+    "src/Optimizer.cc": "0a90be3cdcbdf7d531c65bd31a9056219cdbe2b5197f3d62df9f979ec3e55bb5",
+    "include/Optimizer.h": "d8356b94bd26188cc4ea6bbe3be2bb9b41277ef2b087e0339cb6912b97b9c17b",
+    "include/MetricInertialInitialization.h": "5579d99b5f6b8aa5c39c2cc4d07a6798ea11846c7abbbfabd64b078945823f21"
+  }
+}
