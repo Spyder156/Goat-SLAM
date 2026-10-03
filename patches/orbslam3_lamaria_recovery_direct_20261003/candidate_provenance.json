@@ -1,0 +1,80 @@
+{
+  "experiment": "A recovery direct",
+  "base_profile": "orbslam3_lamaria_online_full_v2",
+  "base_build_manifest_sha256": "5e3b8fffb60bf91a58a46b62ee09dd2fa23d158d4806bba6a3f33124a0fabc7d",
+  "changed_from_v2": [
+    "src/Tracking.cc",
+    "src/ORBmatcher.cc",
+    "include/ORBmatcher.h",
+    "include/TrackingStateRollback.h"
+  ],
+  "source_changes_from_common_base": [
+    "include/CameraModels/Fisheye624.h",
+    "include/Frame.h",
+    "include/KeyFrame.h",
+    "include/LocalMapping.h",
+    "include/LoopClosing.h",
+    "include/MLPnPsolver.h",
+    "include/ORBmatcher.h",
+    "include/Optimizer.h",
+    "include/System.h",
+    "include/Tracking.h",
+    "src/CameraModels/Fisheye624.cpp",
+    "src/Frame.cc",
+    "src/G2oTypes.cc",
+    "src/KeyFrame.cc",
+    "src/LocalMapping.cc",
+    "src/LoopClosing.cc",
+    "src/MLPnPsolver.cpp",
+    "src/MapPoint.cc",
+    "src/ORBmatcher.cc",
+    "src/Optimizer.cc",
+    "src/Settings.cc",
+    "src/System.cc",
+    "src/Tracking.cc"
+  ],
+  "new_files": [
+    "Examples/Stereo-Inertial/stereo_lamaria_euroc.cc",
+    "include/FullCalibrationOptimizerImpl.h",
+    "include/G2oFullCalibration.h",
+    "include/G2oRadialCalibration.h",
+    "include/MetricInertialInitialization.h",
+    "include/MetricRigInitialization.h",
+    "include/TrackingStateRollback.h"
+  ],
+  "descriptor": "Existing256-bit random-hyperplane binarized ALIKED; float descriptors unavailable in cache",
+  "geometry_gates_unchanged": {
+    "minimum_correspondences_total": 15,
+    "minimum_per_camera": 10,
+    "ransac": {
+      "probability": 0.99,
+      "min_inliers": 10,
+      "max_iterations": 300,
+      "sample": 6,
+      "epsilon": 0.5,
+      "chi2": 5.991
+    },
+    "verified_inliers": 50,
+    "max_hamming": 70,
+    "nn_ratio": 0.75
+  },
+  "runtime_bounds": {
+    "candidates": 11,
+    "features_per_frame_max": 4096,
+    "features_per_candidate_max": 4096
+  },
+  "shared_transaction_fix": "Pre-relatch IMU snapshot restored if subsequent local-map confirmation fails; grace refreshed only after confirmation.",
+  "files_sha256": {
+    "geometry.patch": "dc48ea7ad6515895f3438eb777f690e23b0e8f5e5a506d38b2ac0182e774fdb0",
+    "base_manifest.json": "2f83a7b0dd7b6b5e8cdc9695eee46effd6ff0084802800350289889892b7c6a3"
+  },
+  "contract": {
+    "checks_passed": 20,
+    "failures": 0,
+    "results": "build/orbslam3_lamaria_recovery_direct_20261003/tests/recovery_contract_v2/results.json",
+    "fullsize_candidate_ms": 65.4519,
+    "comparisons": 9000000
+  },
+  "library_sha256": "a9a93d595404894566a1742cda1194b9097429ecad05d54e766f55e5bd9c229e",
+  "package_materialization": "Cumulative patch applied to private copy of common baseline; exact byte comparison with staged source passed."
+}
