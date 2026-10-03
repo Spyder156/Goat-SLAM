@@ -9,6 +9,7 @@
 /Papers/
 /CLoSeR.pdf
 /maintenance/
+/reviews/
 /lamaria_audit_20261003_controls/
 __pycache__/
 *.py[cod]
@@ -31,6 +32,7 @@ __pycache__/
 *.a
 *.log
 /pipeline/okvis_probe/probe
+configs/**/selfocc_cam*_applied.png
 /vendor/**/build/
 /vendor/**/.git
 /vendor/**/.gitignore
