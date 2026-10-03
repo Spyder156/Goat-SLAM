@@ -1,0 +1,83 @@
+Full Short refinement experiment contract
+=========================================
+
+Sequence: sequence_1_19, full native recording, not a time crop.
+Reference: lamaria_radial_fixed_short_full_20261003_short_full, Score2D 67.188379.
+Suite: experiments/lamaria_global_refinement_20261003 (symlinked external disk).
+
+Scoring and display
+-------------------
+The estimator exports raw metric world-from-body poses at original timestamps.
+The official LaMAria evaluation functions derive one similarity transform from
+the control points and apply it to the trajectory. The estimator does not use
+GT or that transform. No public leaderboard submission is made here.
+
+An evaluation Rerun reuses the exact saved CP_sim3 in lamaria_score/scores.json
+for poses, rig, landmarks and point histories; it does not fit another transform.
+Metric SE3 and dense Sim3 diagnostic fits are labeled separately and do not
+change scored inputs. Score2D averages the official piecewise control-point
+error contributions; missing control points contribute zero. Missing GT
+samples remain in the full PoseRecall denominator, not in Score2D directly.
+
+Common offline input
+--------------------
+The source run supplies 18,343 poses. Both native camera images are used at
+every source pose: 36,686 images, with factory Fisheye624 calibration, a fixed
+0.1375764865 m rig baseline, and native pixel coordinates converted by +0.5 px
+to COLMAP's convention. SDK/COLMAP projection parity includes peripheral rays.
+COLMAP SIFT extraction, matching and fixed-pose triangulation produce the same
+immutable graph for every offline arm: 1,715,595 landmarks and 26,564,121
+observations, including 310,108 cross-camera landmarks. No GT proposes matches.
+
+Each arm starts independently from that graph, rather than the preceding arm:
+  visual_rig: all supplied rig poses and landmarks, fixed intrinsics.
+  vi_fixed:  the same visual graph, plus native IMU factors and inertial states.
+  vi_calib:  the same VI graph, plus all 15 independent native parameters/camera.
+The shared native focal is represented as fx=fy in COLMAP's 16-value storage.
+VI includes every native IMU sample in every consecutive pose interval, with
+exact interpolated boundaries, per-frame velocity/bias states and bias random
+walks. Gravity direction is estimated, with its norm fixed at 9.81 m/s^2.
+
+Calibration priors and limits are documented in README.txt. They stay centred
+on the input factory calibration. Final projection failures and removed track
+observations are explicitly counted. No features are dropped before the solve
+for resource reasons. All original pose timestamps are retained and per-frame
+visual/IMU support is exported.
+
+The runner records input hashes, solver settings and command results. Profiling
+and deliberately stopped attempts live under attempts/ or profiles/; they must
+not be exported, scored or presented as complete refinements. A successful
+30-step run is usable output, not automatically a convergence guarantee.
+
+Online arm
+-----------
+The separate online_full_v2/v3 experiments replay the original native inputs
+through the SLAM estimator, using ALIKED observations rather than the offline
+SIFT graph. Periodic VI calibration uses only past keyframes. It jointly adjusts
+poses, points, velocities, biases and all native camera intrinsic parameters,
+with factory priors, per-step limits and held-out acceptance tests. Rig and
+camera-to-IMU extrinsics remain fixed. Therefore the online and offline arms
+are not a controlled comparison of only one variable.
+
+v2 completed with Score2D 80.199161, 14/14 CPs within 1 m and 2999/2999 GT
+associations; its CP scale was 1.01944346. It includes known transient rollback
+jumps. v3 changes only the rollback snapshot boundary: preserve the IMU
+prediction before visual relatching, so a rejected relatch cannot become the
+fallback pose. Its full-sequence result was negative: Score2D 42.593277,
+three independent maps, and 1,384/2,999 associated GT samples for the selected
+largest map. The other 1,615 GT samples count as PoseRecall failures. Its surviving-map
+error is a subset diagnostic and cannot be compared to full-route accuracy.
+The rollback contract held in all 205 logged rejected initialized updates;
+correct rollback alone did not produce robust continuity. Calibration/keyframe
+scheduling also differed before the first failure, so this is not a perfectly
+deterministic one-variable ablation. Preserve the successful v2 result.
+
+Interpretation
+---------------
+Compare official score, coverage, metric scale, error distribution and solver
+convergence together. A lower reprojection cost alone is not a trajectory win.
+The online score improvement cannot yet be assigned exclusively to lens
+calibration: recurring global VI optimization and lifecycle repairs changed
+too. A future identical recurring-VI run with frozen intrinsics would isolate
+that contribution. The requested offline vi_fixed/vi_calib pair does isolate
+intrinsic freedom within their common SIFT graph.
