@@ -1,0 +1,713 @@
+LaMAria reliability work — 2026-10-02
+
+Objective and order
+-------------------
+Establish reliable, geometrically connected trajectories before testing global
+optimization, loop closure, calibration refinement, or learned-depth inputs.
+Pose output during IMU-only coasting is not equivalent to visual tracking.
+Independent maps are never joined using an invented or ground-truth transform.
+
+1. Freeze inputs and prepare repeatable startup, failure-prefix, and full tests.
+2. Reproduce Short/Medium failures and locate the first failing estimator stage.
+3. Make targeted continuity fixes; require repeated full Short/Medium/Long runs.
+4. Compare fixed-calibration global metric-stereo BA and full VI-BA using the
+   same captured observations and initial state.
+5. Test longer-range observations and MegaLoc loop retrieval, verification,
+   correction, and VI refinement separately.
+6. Test regularized calibration refinement and optional depth assistance.
+7. Combine measured improvements and evaluate held-out sequences.
+
+Completed preparation
+---------------------
+Native camera images, factory-calibrated IMU, binarized ALIKED features, and the
+history-profile binary are reused. Source image timestamps retain their original
+integer nanoseconds. Short has one source tail frame outside IMU support; Medium
+has two. These remain in full-source coverage accounting.
+
+Suite registry: configs/orbslam3_lamaria/suite_20261002.json
+Suite CLI: pipeline/run/lamaria_suite.py
+
+Prepared plans (no estimator execution during preparation):
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_suite_20261002
+
+There are 12 cases: Short/Medium/Long x startup/loss-context/loss-prefix/full.
+Each includes run.sh, render.sh, settings.yaml, timestamps_ns.txt, and plan.json.
+Full profiles additionally include score.sh. Startup uses the first120 seconds.
+Loss-context is a COLD START, with a different map/initialization history.
+Loss-prefix begins at the original recording start and retains earlier inputs.
+Long's event is an earlier recovered coasting episode, not a known map split.
+Medium full is needed to test complete loop opportunities.
+
+The runner's optional --skip-viz defers rendering but preserves raw exports and
+coverage accounting. Existing default rendering behavior is unchanged. Deferred
+rendering is explicitly recorded as skipped, not falsely reported as successful.
+Focused tests and all12 actual runner CLI dry-runs passed; see cli_validation.json.
+
+Baseline visualization
+----------------------
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_step1_20261002/baseline_dashboard.html
+
+Offline interactive dashboard: metric comparisons, primary versus all-atlas
+coverage, control-point errors, primary camera trajectories using the saved
+whole-sequence CP Sim3, and independent map views. No new alignment is fitted.
+Browser/data validation and provenance are stored alongside the HTML.
+
+Failure visualizations from existing baseline recordings
+--------------------------------------------------------
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_step2_20261002/short_failure/run.rrd
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_step2_20261002/medium_failure/run.rrd
+
+Short: native time790–845 seconds,1100 stereo frames.
+Medium: native time830–875 seconds,900 stereo frames.
+Each folder contains viz/failure_contact_sheet.jpg and individual stills.
+Both camera streams, keypoint colors/positions and persistent trails match the
+original Rerun payloads exactly. Selected intervals retain the original20 Hz.
+CLI Rerun verification passed. validation.json records the provenance and scope.
+
+Final-map cam0 poses share the saved scoring transform with the reference path.
+Raw online IMU poses have a SEPARATE view and are not registered to final poses.
+Live trails clear on map/init/world-version changes. Some backend corrections
+do not increment world_version, so a raw live jump alone is not evidence of
+physical motion or estimator failure. Final geometry uses later optimized
+poses; it is not the historical geometry of the map at the displayed time.
+These recordings intentionally diagnose trajectories and camera associations;
+the full clouds remain in the original baseline run.rrd/atlas_overview.rrd.
+
+Observed baseline failures
+--------------------------
+Short: repeated weak recoveries begin around804.742s; a sustained coast begins
+805.642s. From810–824.842s,263 of297 frames coast. The remaining34 visual-OK
+frames have median18 inliers. Final uninterrupted coast lasts824.892–829.892s.
+That last5-second displacement is42.413m online and42.227m in final geometry:
+the divergence exists in SLAM, not just the rendering/export.
+
+Medium: coast begins845.087s, briefly recovers846.787–851.287s, then coasts
+851.337–856.287s. Last5-second displacement is1.319m online and1.318m final.
+Images show strong viewpoint tilt toward the pavement, with the other lens
+retaining architectural content for part of the episode. This is evidence to
+investigate, not proof of a particular matcher or optimizer defect.
+
+Existing baseline logs lack detailed matcher/optimizer diagnostic rows. The
+current binary already supports LAMARIA_MATCH_DIAGNOSTICS and
+LAMARIA_MATCH_DIAG_EVERY. These add counters/read-only snapshots/logs without
+changing estimator decisions; extra logging can still change thread scheduling.
+Threshold/ratio/radius environment overrides must remain unchanged in the
+diagnostic replay.
+
+Detailed evidence and source references:
+/home/raghav/workspace/MeckaAI/lamaria_audit_20261002_continuity/reliability_step2/baseline_failure_findings.json
+
+Review checkpoints
+------------------
+User visual review requested for Short804–810s: check visible stationary features,
+blur/occlusion, and the turn into the stairwell as green associations disappear.
+No visual diagnosis has yet been treated as proof of the initiating code defect.
+No estimator source, binary, geometry convention or matching threshold was
+changed during preparation and baseline visualization.
+
+Instrumented prefix replay
+---------------------------
+Fresh Short15940-frame and Medium16366-frame prefixes were launched using the
+same history-profile binary/calibration and --match-diagnostics. The runner
+passes LAMARIA_MATCH_DIAGNOSTICS=1 and LAMARIA_MATCH_DIAG_EVERY=1 into Docker;
+no ratio, search-radius, feature-count or tracking threshold is changed.
+
+Suite and run outputs:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_replay_20261002
+
+These prefixes are diagnostic trials, not new full-sequence benchmark scores.
+The logs and parsed viz/match_diagnostics.json distinguish projection/search
+failure, optimization rejection, and retained velocity/bias changes. The pre-
+optimization snapshot can already include a relatch pose; it is not always an
+untouched IMU prediction.
+
+State-restoration hypothesis under investigation: the first-failure rollback
+branch in TrackLocalMap is present for IMU_MONOCULAR but not IMU_STEREO. However,
+both baseline configs set Tracking.coastRestore:0, disabling that rollback too.
+The asymmetry alone therefore does not establish the cause of these failures.
+An earlier Medium loss at210.337s had only17/24 detections and a negligible
+retained velocity change (0.0001849m/s), providing a recoverable negative control.
+Terminal failure measurements are required before changing this policy.
+
+Completed diagnostic replay results
+-----------------------------------
+Both prefixes exited normally. Raw export, coverage accounting and explicit
+Rerun rendering succeeded; both recordings pass Rerun CLI verification with
+zero missing camera images. These remain prefix tests, not leaderboard scores.
+
+Short: 15940 input frames, 15930 exported poses across TWO independent maps.
+First failed local-map update: native804.642200762s. Online map transition:
+817.342200762s. The original baseline transition was829.942200762s.
+Support falls from505 inliers at798.442s to70 at803.942s. At804.642s, cameras
+detect708/1288 features, but only2/11 associations enter optimization;2/3 survive.
+The13 input associations cannot reach the15-inlier tracking floor even if every
+association survives optimization. Cam0 support declines before cam1 support.
+This locates the initiating support loss upstream of the rejected optimizer
+return; it does not yet distinguish scene coverage, landmark replenishment,
+visibility/projection, prediction, or descriptor matching.
+
+The first failed update changes velocity by0.000158m/s. During the final coast,
+speed reaches5.03m/s while individual local-map optimizer velocity changes stay
+below0.000657m/s. A large rejected-optimizer velocity kick does not explain this
+replay's initiating failure. This does not independently validate IMU propagation.
+There are236 coast recovery attempts,28 with any PnP hypothesis and zero solved
+hypotheses/successful relatches. BoW diagnostic zeros are censored by a minimum
+match gate and do not prove zero raw descriptor matches.
+
+Medium: 16366 input frames,16317 exported poses, ONE map through886.687393837s.
+The old845–856s terminal failure did not reproduce. A dropout772.937–774.137s
+recovers. Inliers already differ from baseline at71.187s, with different IMU
+initialization/BA timing. This is evidence of run-to-run variability, not an
+algorithm repair or proof of a threading defect. Logging adds scheduling/I/O
+effects despite leaving mathematical decisions and thresholds unchanged.
+
+Input/config/binary identity and exact added diagnostic flags are recorded in:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_replay_20261002/replay_input_verification.json
+
+Fresh Rerun recordings:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_replay_20261002/runs/lamaria_reliability_replay_20261002_short_loss_prefix/run.rrd
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_replay_20261002/runs/lamaria_reliability_replay_20261002_medium_loss_prefix/run.rrd
+
+Interactive visual matching reports (self-contained, open in a browser):
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_replay_20261002/runs/lamaria_reliability_replay_20261002_short_loss_prefix/viz/report.html
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_reliability_replay_20261002/runs/lamaria_reliability_replay_20261002_medium_loss_prefix/viz/report.html
+
+Reports combine actual camera overlays with visibility, association, rejection,
+optimizer and coasting plots. Medium explicitly compares its old loss interval
+against this successful passage. Browser/data validation and previews accompany
+each report. Root inspected both reports' image and chart previews.
+
+The main run.rrd displays the largest map's final optimized geometry revealed
+over time; it is not a reconstruction of every historical BA state. Short's
+separate raw maps are available in viz/atlas_overview.rrd. Neither independent
+map is joined to the other using GT. Green overlays mean mapped association;
+they do not guarantee that the corresponding observation survives optimization.
+At804.642200762s the camera dump marks22/23 features mapped, while the failed
+local-map optimization call has2/11 input associations and2/3 surviving ones.
+These are different recording stages/criteria; the green overlay is not the
+local-map optimizer's inlier mask. The exact failed-frame pair is included in
+the Short report, alongside six surrounding samples.
+
+Each run's viz directory contains failure_stage_analysis.json,
+failure_window_frames.csv, match_diagnostics.json and parse_report.json.
+All15928 Short and16316 Medium logged local-map calls parse successfully, with
+zero dropped records and zero projection-outcome partition errors.
+
+Next diagnostic before selecting an estimator change
+----------------------------------------------------
+Visually compare Short799–823s, especially the first failure804.642s, with its
+per-camera visible-landmark and association counts. Compare Medium's recovered
+773s dropout and successful845–856s passage with the baseline failure recording.
+Run an unchanged logging-off prefix control before attributing Medium's improved
+continuity to a particular implementation difference.
+
+Capture production SLAM projected pixel locations, search radii, landmark IDs,
+candidate locations and rejection reasons around the Short decline. Overlay
+those actual online values on both native camera images, preserving the display
+rotation. Final optimized map reprojection is not a substitute for historical
+online projection. Existing creation/culling telemetry can then distinguish
+insufficient landmark replenishment from lost visibility or failed association.
+Do not loosen gates or alter the estimator merely to increase green-point counts.
+
+Production trace implementation notes (read-only audit, not yet implemented)
+--------------------------------------------------------------------------
+Effective sources are under build/orbslam3_lamaria_history/sources/src/.
+ORBmatcher.cc94–185 (cam0) and197–280 (cam1) contain query/candidate/assignment
+decisions; Frame.cc1311–1385 contains actual frustum decisions; Tracking.cc
+5076–5174 supplies the local-map search scope. Use a separate patch package and
+build directory through pipeline/run/build_lamaria.py; preserve the baseline.
+
+GetFeaturesInArea uses a square, abs(du)<r and abs(dv)<r, not a circular window.
+Capture the actual half-width passed at the query. ALIKED disables octave
+filtering despite requested level bounds. Record local AND pooled feature indices.
+Frustum-rejected points may retain stale mTrackProj fields; capture local values
+inside the decision branch. Negative-depth rejects have no production uv: log
+null rather than projecting them separately. Snapshot consumed values immediately,
+buffer on the tracking thread and flush after the scope; do not retain pointers
+for later inspection. Limit detailed candidate records and explicitly count any
+omissions. Do not compute distances for candidates the algorithm skipped.
+
+Major finding checkpoint: dual-camera observation records and scale
+------------------------------------------------------------------
+User requested substantial diagnosis/repair and an explicit stop for discussion
+after each major error, implementation or crossroads. This checkpoint therefore
+packages the discovered structural error before changing the estimator.
+
+Confirmed source defect: LocalMapping::ProcessNewKeyFrame checks keyframe-wide
+MapPoint::IsInKeyFrame before adding each feature slot. For an existing point
+seen in both cameras, adding cam0 makes that check true; cam1 is then skipped
+and the established point is misclassified as a newly inserted stereo point
+for recent-point culling. MapPoint actually stores separate left/right indices.
+KeyFrame retains the right feature slot, while the landmark observation tuple
+can lack it. BA reads the latter, so the slot is not equivalent to a BA factor.
+
+Saved-state confirmation in fresh Short:2012 surviving map0 KF slots refer to
+points whose observation dictionary has no observation from that camera at all;
+2010 of these are cam1. This is a LOWER BOUND because camera-presence flags cannot
+detect a missing observation in one KF if another KF recorded the same camera.
+Baseline Short independently has1876 such slots,1873 fromcam1; Medium replay
+has1260,1259 fromcam1. These are final-state consistency checks, not complete
+historical counts or proof that this one defect explains the entire failure.
+
+Concrete example: KF1937 at799.092200762s stores point370544 at cam0 pixel
+(233.399,50.106) and cam1 pixel(235.564,362.626), but that live point's exported
+observation history reports cam0 only.
+
+Related places requiring the same per-camera invariant in a focused repair:
+- ProcessNewKeyFrame: register each missing camera slot independently; add only
+  points born in this KF to the recent list, once per point.
+- MapPoint::AddObservation: repeated registration must not inflate nObs;
+  resolve same-camera slot conflicts explicitly rather than silently overwriting.
+- MapPoint::Replace: merge complementary camera slots when the survivor already
+  has the other camera in that KF; current keyframe-wide check erases them.
+- ORBmatcher::Fuse(KeyFrame,...,bRight): membership should be tested for the
+  queried camera. Current keyframe-wide skip prevents adding the other camera.
+No patches for these findings have been applied at this checkpoint.
+
+Feature evidence: at804.592200762 ->804.642200762s the stored descriptors yield
+436 cam0 and663 cam1 proposals using the production temporal gates.775 also pass
+an independent bidirectional image-flow check. These are image correspondences,
+not verified static-scene/3D inliers. Only2+5 proposals originate from previously
+mapped landmarks, exactly matching the logged temporal seeds. The remaining1092
+originate from unmapped features. This explains how plentiful red-red matches
+coexist with only13 total associations entering the failed local-map optimizer.
+
+Separate confirmed ALIKED contract gap: external features have synthetic octave0,
+but LocalMapping scale-consistency, MapPoint scale prediction and some Fuse
+distance gates still interpret that as ORB's measured pyramid level. This merits
+a separate consistent feature-model repair; its numerical contribution at the
+doorway has not been established. Do not conflate it with the observation defect.
+
+Scale evidence (evaluation-only, same visually tracked cam0/GT associations):
+Short replay: SE3 positional RMSE8.799m; one-global-Sim3 RMSE1.237m; scale0.923478,
+meaning the estimate is approximately8.29% too large. Baseline Short similarly
+has9.834m ->1.835m withscale0.915838. These exclude the terminal coasting segment.
+Medium replay:0.931m ->0.439m,scale1.01244. Long:9.127m ->2.542m,scale0.963721.
+This is diagnostic alignment, not a newly repaired trajectory or official score.
+
+Short online poses in a stable world gauge already have scale0.94935 at+60–120s
+from first pose, and0.91956 at+480–720s. Thus initialization is plausible, but the
+error also changes over the run. The stereo initializer fixes its scale variable
+at1; later ScaleRefinement is monocular-only and inside an early-time gate.
+Joint visual-inertial BA can still move metric geometry, so this source behavior
+does not prove bootstrap is the sole cause. Missing stereo observations remove
+constraints needed for metric consistency, but their causal contribution awaits
+an isolated corrected run.
+
+Review artifacts:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_structural_audit_20261002
+
+Next major implementation: repair dual-camera observation bookkeeping as one
+cohesive change, demonstrate both-camera BA-factor retention, then compare full
+Short/Medium runs before mixing in ALIKED scale-policy or initialization changes.
+Report continuity, retained associations, raw metric scale and full-denominator
+scores; do not present a GT scale fit as an estimator fix.
+
+Observation repair candidate, 2026-10-02
+----------------------------------------
+Authorized repair follows the structural audit above. The candidate is isolated
+from the history/continuity baseline and leaves third_party read-only.
+Package: patches/orbslam3_lamaria_observations
+Build: build/orbslam3_lamaria_observations
+
+Changes as one coherent observation-contract repair:
+- ProcessNewKeyFrame registers left/right camera observations independently.
+- Recent-point culling receives each newly born point once, never an old point
+  merely because its other camera is already registered.
+- AddObservation is idempotent per camera and retains an established winner on
+  a conflicting feature index; rejected owned reverse slots are cleared.
+- Replace merges complementary camera observations instead of dropping both
+  old observations when the survivor already appears in the keyframe.
+- Both Fuse overloads test membership in their queried camera. Registration is
+  verified before publishing a new reverse feature slot.
+- Metric bootstrap's right-camera helper follows the same ownership contract.
+- EraseObservation no longer dereferences an empty observation map for its ref.
+- Shutdown exports a full per-keyframe bidirectional graph/count audit, not just
+  the earlier global camera-presence lower bound.
+
+No descriptor thresholds, scale gates, features, calibration, IMU policy, or
+initialization thresholds changed. Existing graph-mutation serialization is
+still required; these ownership checks are not atomic compare-and-clear APIs.
+
+Production regression fixture:
+pipeline/run/tests/observation_contract.cpp
+pipeline/run/tests/run_observation_contract.py
+Evidence root:
+/home/raghav/workspace/MeckaAI/lamaria_observation_regression_20261002
+Identical fixture: baseline 11 failed / 14; candidate 14 passed / 14.
+Direct mapper -> production BA: baseline supplies front1/rear0 and leaves wrong
+8m depth unchanged; candidate supplies front1/rear1 and recovers 5.00001m for a
+synthetic 5m landmark. Monocular negative control remains 8m on both. Empty
+EraseObservation happened to pass on baseline too; no baseline crash is claimed.
+This proves observation delivery to BA, not a real-sequence accuracy gain.
+
+Full Short and Medium candidate runs (results pending when this entry written):
+experiments/lamaria_observations_short_20261002
+experiments/lamaria_observations_medium_20261002
+Each suite stores validated native inputs, unchanged sequence calibration,
+reproducible run/render/score scripts and unique logs. Full scoring counts all
+source timestamps; missing poses remain failures and independent maps are not
+joined with GT. Scale fits are evaluation-only and never feed the estimator.
+
+Completed observation-repair experiment: do NOT promote as an accuracy win
+-------------------------------------------------------------------------
+Both full candidates exited normally with one surviving map and zero active-map
+resets. This is a single run per sequence, not repeatability evidence.
+
+Short sequence_1_19:
+  18,351 supported inputs / 18,352 original frames.
+  18,345 exported poses; 17,854 visual-OK; 491 IMU-coasted; 6 initializing.
+  Official local Score2D 39.656698 baseline -> 9.627402 candidate.
+  CPs triangulated 14/14, within 1m 0/14; dense GT associated 2999/2999.
+  Same common visual-OK timestamps: SE3 RMSE 9.932977 -> 14.132507m;
+  estimate-to-GT scale .916615315 -> .882509230; Sim3 RMSE 2.634507 -> 1.792271m.
+  Raw metric stretch therefore increases from about9.1% to13.3% on that scope.
+  First local-map failure at804.992200762: pre-opt28+33=61 associations,
+  post-opt3+9=12. The old failure passage remains weak;790-840s has489coasted
+  frames versus463 baseline. Map continuity improved, visual support did not.
+
+Medium sequence_2_11:
+  23,746 supported inputs / 23,748 original frames.
+  23,697 exported poses; 23,577 visual-OK; 120 IMU-coasted;49 initializing.
+  Official local Score2D 55.752448 baseline -> 39.921623 candidate.
+  CPs triangulated18/18, within1m3/18; dense GT associated4080/4083.
+  Same common visual-OK timestamps: SE3 RMSE1.219593 ->1.864671m;
+  estimate-to-GT scale1.015547805 ->1.027418424; Sim3 RMSE.663838 ->.544487m.
+  At835-875s candidate staysMap0,9coasted frames and median137inliers versus
+  baselineMap0->1,255coasted and median51.5inliers. That local recovery is real
+  in this run, but whole-sequence control-point accuracy regressed.
+
+Both verified Reruns have zero missing camera images. Official scoring already
+uses a CP-derived Sim3, so one uniform posthoc rescale cannot explain or repair
+the score regressions. All source frames remain in the scoring denominators;
+GT is used only for offline evaluation, never fed to the estimator.
+
+Live observation audit: missing backlinks, wrong reverse slots, invalid indices,
+bad observation KFs and weighted-count mismatches all zero on both sequences.
+Retained KF slots pointing to already-bad landmarks remain:666Short/890Medium.
+Those are not proof of dangling memory: current mapping skips already-bad copied
+frame slots, bad points are filtered by matching/BA and Map erasure does not
+immediately delete them. Exact slot histories were not exported.
+Short point-observation totals exceed retained-KF slots by2 per camera. A queued,
+preregistered final KF outside Atlas can produce this scope mismatch; identities
+are not exported, so do not claim this is a proven attribution. Full cross-map
+membership/lifecycle consistency has not been established by this audit.
+
+Decision: retain the isolated candidate/patch and reproducible evidence, keep the
+history baseline as the default. The observation contract is fixed and unit
+verified, but the full-system candidate is worse on both scores. Next major
+crossroads: metric initialization/scale evolution and geometric validity of
+recovery after weak visual support, before any threshold loosening. Stop for
+user visual review/discussion rather than stack another estimator change now.
+
+Final scope check: Short full route,2999GT associations, SE3 RMSE19.559805m;
+best one-global-Sim3 RMSE19.284965m (scale.9749247). Visual-OK-only full route
+still19.042664m after Sim3. Thus the1.792271m common-prefix Sim3 fit must not
+be described as full-route accuracy. Recovery/global deformation is a priority,
+not merely a uniform initial scale error. All14CP are recovered but their
+geometry is wrong; the3 newly recovered CP add zero score (errors>=10m).
+Independent saved-score arithmetic checks passed10/10 for each sequence.
+
+2026-10-03: metric initialization implementation and calibration hypothesis checkpoint
+
+Candidate overlay: patches/orbslam3_lamaria_metric_init
+Candidate build: build/orbslam3_lamaria_metric_init
+Base: isolated observation-contract candidate, NOT the default history build.
+Vendor sources remain untouched. Matcher sources, feature caches and supplied
+camera/IMU calibration are unchanged. No ground truth enters the estimator.
+
+Implementation: multi-keyframe stereo-inertial scale/gravity/bias/velocity
+proposal on a copied snapshot; native Fisheye624 factors; metric rig baseline;
+unchanged-map validation and guarded commit; retry rejected initial/VI-BA
+proposals. KF creation is held during proposal/commit/BA, frames keep tracking.
+Initial visual geometry is still the provisional two-frame bootstrap. The new
+proposal currently freezes its camera poses and landmarks; full inertial BA
+only follows acceptance. This limitation matters in the Short result below.
+
+Corrected two real scale-path contracts: VertexScale's multiplicative update
+requires a scale factor in its Jacobian; scaling camera centres must preserve
+the physical camera-to-IMU lever arm. Old stereo initialization fixes scale=1,
+so these dormant scale-path defects alone do not explain the old scale error.
+Final-library production tests all6 pass, including eight vertex Jacobians,
+nonzero rotated lever arm, scale recovery0.86->0.8599658 and1.15->1.1499428,
+and stationary/weak-stereo rejection without input-state mutation. Old-library
+negative controls reproduce both targeted scale-path failures.
+Tests: build/orbslam3_lamaria_metric_init/tests/metric_contract_20261003/results.json
+
+Completed two original-start120s diagnostics,2401 input frames each,exit0.
+Short:2395visualOK,6initializing,0coasting,0resets,oneMap0. All227 metric
+proposals rejected by the new stereo-consistency guard; IMU never initialized.
+First proposal t67.992200762:15KFs,707distinct stereo landmarks,scale0.8766961,
+objective61762.58->7872.75,median stereo1.127737->1.793979px. This is a conflict
+under frozen visual geometry, not proof that0.8767 is the true correction or
+that the calibration is wrong. sigma=inf here means not computed after early
+rejection, NOT measured scale unobservability. Final startup SE3 ATE4.42937m.
+Medium:2352visualOK,49initializing,0coasting,0resets,oneMap0. Initial IMU and
+both early VI-BA stages accepted scales1.005058720,0.999379221,0.999130140.
+Final startup SE3 ATE0.150114m. These are startup diagnostics, not full-route
+leaderboard scores. Separate same-timestamp comparisons accompany the reports.
+Exact common-GT scope: Short455poses, old/new SE3 RMSE3.854037/4.429371m,
+estimate-to-GT diagnostic scale0.868339/0.851792; Medium424poses, SE3
+RMSE0.102217/0.150113m, scale1.006895/1.009957. Independently reproduced.
+Comparison limitation: old poses come from the FULLRUN final geometry and can
+benefit from future BA, whereas the candidate ends at120s. Equal evaluated
+timestamps do not make this an equal-available-data causal comparison.
+
+Verified Reruns have both camera streams, zero missing images, and ONE common
+SE3 alignment of trajectory/cloud with alignment_scale=1. No posthoc scale fix.
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_metric_init_short_startup_20261003/runs/lamaria_metric_init_short_startup_20261003_short_startup/run.rrd
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_metric_init_medium_startup_20261003/runs/lamaria_metric_init_medium_startup_20261003_medium_startup/run.rrd
+
+Independent intrinsics audit uses native production bearings, image-only KLT
+tracks, disjoint calibration-train/test windows and held-out tracks with pose
+treated as a nuisance. Short heldout median geometric residuals are about
+0.15px/camera; small focal/radial corrections do not reliably improve them.
+Exact doorway804.642->805.142s:66cam0/30cam1 image matches, only10/10 initially
+mapped. Heldout medians0.109/0.240px. cam0 outer10heldout tracks median0.148px;
+cam1 has no heldout outer tracks there, so its periphery cannot be judged.
+Adjacent-frame sampled association losses occur centrally; many peripheral
+features were already unmapped. MapID changes are not proof of physical
+landmark loss because fusion can change identities; people/occlusion are
+visible. This supports sparse map support, not a broad proven intrinsic defect.
+
+Real invalid-domain edge case: two sampled Medium cam1 detections outside the
+declared330px lens radius produce roughly122px inverse roundtrip errors. None
+occurred in the sampled doorway frames. This is a domain/fallback handling bug
+to fix separately, not evidence that factory calibration explains the collapse.
+Audit: /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_intrinsics_periphery_20261002/report.html
+
+Decision: do not promote this initializer or start full-route runs while Short
+cannot initialize IMU. Stop at this major implementation/crossroads for user
+visual review as requested. Next substantive change: optimize poses/landmarks
+together with inertial state on an isolated snapshot BEFORE judging/committing
+the proposal. Use scale solve as a seed; retain metric extrinsics and matching
+bounds. Investigate valid-domain rejection separately. No online calibration
+has been deployed, and calibration is not certified perfect by this audit.
+
+2026-10-03 follow-up: domain bug fixed; joint initializer implemented separately
+-----------------------------------------------------------------------------
+User authorized the inverse/domain repair and the proposed joint refinement,
+with explicit peripheral coverage evidence. Matching bounds, provided lens
+coefficients, rig baseline and feature caches remain unchanged. No GT enters
+either estimator. Vendor sources remain read-only. History is still the default.
+
+Domain candidate: patches/orbslam3_lamaria_valid_domain and matching build.
+Reads per-camera native radius/angle metadata from each sequence's VRS after
+exact intrinsics/size validation. Fisheye624::tryUnproject returns explicit
+failure instead of a fabricated inverse fallback. Invalid detections are removed
+before cached-ALIKED/native-ORB feature counts, grids and pooled indices form.
+Descriptor/overlap partition identities are retained; empty-camera paths tested.
+Both production contract suites pass5/5. Across four cameras19200 SDK samples:
+17732 valid retained,1468 invalid rejected, all1893 valid peripheral r>=300px
+retained. SDK bearing discrepancy<=4.55e-8rad, roundtrip<=1.80e-5px. Both real
+~122px bad roundtrip samples are rejected. No physical calibration claim follows
+from agreement with an SDK using the same coefficients.
+
+Joint candidate: patches/orbslam3_lamaria_joint_init and matching build.
+Uses scalar proposal as a seed, then jointly refines copied poses, landmarks,
+velocity, biases and gravity with native two-camera/IMU factors before validating
+and committing. Scale is fixed1 in the joint stage to avoid duplicate scale
+freedom. Metric rig and camera/IMU lever arms remain physical. Snapshot source
+poses/points/map versions are checked before commit. Accepted geometry is
+committed consistently under the map update lock. Culled reference-keyframe mTcp
+translations are scaled once per update so historical export chains share units.
+Ten normal production test cases pass. Deliberately wrong fixed boundary geometry
+still fails the2% metric-accuracy target despite low pixel residuals; preserved
+as an explicit limitation. Actual real startup stages here had zero fixed boundary
+KFs, so that fixture is not an explanation for their remaining scale error.
+
+Matched120s tests: two controls, domain-only Short/Medium, joint-only Short/Medium.
+All complete normally with no coasted frames. Same feature/IMU inputs, available
+data horizon and camera coefficients; domain adds only native validity metadata.
+Short exact455commonGT: controlSE3RMSE4.347502m, domain3.681259m,
+joint4.158946m. Joint shape residual after offlineSim3 .453423->.219004m,
+but its estimate-to-GT scale.859095074 means about16.40% oversizing persists.
+Joint initialIMU and both earlyVI-BA stages accepted; scalar-only predecessor
+rejected all proposals on Short. Functional success is not metric accuracy.
+Medium exact424control/jointGT: SE3RMSE.200021->.137589m. Three-way423GT:
+control.200240m, domain.075715m, joint.137741m. Single multithreaded runs only.
+No full-route joint run, no combined domain+joint run at this checkpoint.
+
+Domain full Short: POSITIVE observed result, scale still unresolved.
+Exit0;18351supported/18352source frames;18343poses in one surviving map;
+18331visualOK,12IMU-coasted,8initializing. Sole reset during rejected bootstrap
+after64.692200762 and before64.742200762; firstaccepted pose64.842200762.
+No later reset. Direct observation-only parent had491coasted frames.
+Fixeddoorway790-840s:489->9coasted frames, median15->219.5visualinliers;
+499->9frames below15inliers, bothIMUinitialized1000/1000inputs. Candidate
+stays visual through the original805s failure; brief coasting occurs830-831s.
+Score2D9.627402 direct parent ->55.349924 domain candidate; history default
+39.656698. The history comparison includes observation repairs AND domain changes.
+Independent arithmetic: sum14CPweights154.979787250546/280*100=55.349924018.
+CP14/14triangulated,5within1m;2999/2999GTassociated with full denominators.
+The3newly recoveredCP contribute13.531864score points under the new alignment;
+this is not a causal decomposition because the alignment changes too.
+CP-derived estimate-to-GT Sim3scale.876875513: native metric scale is not fixed.
+No gap filling or GT stitching. Local score only, not a leaderboard submission.
+
+Domain full Medium: NEGATIVE, unresolved crash.
+Exit139 after native665.437393837;11941partialonline rows, lastcompleted
+state2 with83inliers. No final trajectory/map exports, valid fullscore orRerun.
+No stack/core captured, so thread/site/cause remain unproven. Do not interpret
+healthy final tracking metrics as proof the next operation or another thread is
+safe. Historical parent39.921623 and history default55.752448 are context only.
+Candidate cannot be promoted while this run fails.
+
+Peripheral coverage: explicit native-image overlays now show the tested support.
+Short heldoutcam0:112/554 at radius>=250px, max326.17px/77.01deg.
+Shortcam1:86/587, max325.20px/76.71deg. Medium7/47 and16/128 peripheral
+tracks; cam1 outer support concentrated in one45deg sector. Earlier audit was
+not centre-only but coverage is uneven; exact Shortdoorwaycam1 has no outer
+heldout tracks. The earlier fit excluded invalid-domain samples, so the domain
+bug was outside its tested subset. Factory calibration remains open to further
+evidence; the current results do not establish it as the collapse mechanism.
+
+Checkpoint artifacts:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_domain_joint_20261003
+Full comparison:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_domain_full_comparison_20261003
+Coverage evidence:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_intrinsics_coverage_audit_20261003
+
+Decision: stop at the major failure/scale crossroads for visual review. Preserve
+positive Short evidence and failed Medium logs; keep both candidates isolated.
+Next priority is capture the Medium crash stack, then resolve the remaining
+metric factor/geometry conflict before combining or promoting changes.
+
+2026-10-03 follow-up: Umeyama diagnostic and full online-calibration experiment
+---------------------------------------------------------------------------
+The user requested a quick global Sim3 diagnostic of the completed Short run,
+and substantive implementation of the initialization/intrinsics experiment.
+
+Umeyama: one positive-scale proper-rotation fit to all2999 associated final
+camera0 poses from lamaria_domain_short_full_20261003, including2coasted poses.
+Scale=.876955188; rigid-only3D RMSE18.10839m -> Sim3 RMSE1.71343m.
+Applying that same transform to already-triangulated control points, with no
+subsequent CP refit, gives diagnostic Score2D54.02407. This uses denseGT to fit
+and evaluate and is NOT the official protocol score. The official local score
+remains55.349924 because its CP alignment already admits a global Sim3.
+Exact transform composition independently reproduces that invariance to4e-13m;
+no fresh nonlinear CP refit/retriangulation was claimed. All14CP and2999GT
+denominators retained.18343poses;9native missing poses remain absent.
+Report: experiments/lamaria_short_umeyama_20261003/report.html
+
+Implemented isolated candidate patches/orbslam3_lamaria_online_radial, combining
+the native valid-domain repair and joint metric initializer. First initialization
+uses a12s window and pauses input consumption while solving/committing; it does
+not drop frames. Optional calibration jointly adjusts two leading radial terms
+per camera along with poses/landmarks/inertial state. Focal/principal point,
+remaining distortion terms, rig/IMU extrinsics and matching bounds stay fixed.
+Physical coefficient bounds .02/.01, prior std .005/.0025. Camera projection
+and stereo retriangulation are the production implementations. No GT is used.
+
+Both modes use an identical deterministic observation holdout, excluded from
+the refinement and scalar seed. The underlying map was already built from the
+images: this is an optimization holdout, not a completely unseen-data test.
+Acceptance includes peripheral/central heldout checks, inverse validity, metric
+conditioning, coefficient observability and full live-map coverage. Rejection
+restores the fixed-camera solution. Accepted coefficients and geometry commit
+atomically with input paused; existing stereo depth/XYZ caches are refreshed.
+Scope is one calibration at first IMU_STEREO initialization, not generic ongoing
+calibration. Final-map diagnostics read the accepted model; official scoring
+still uses supplied benchmark calibration. Source settings remain preserved.
+
+Final production-library tests:26factor/cache contracts,10metric/joint cases
+and2proposal/fallback cases pass. Library SHA256:
+49d36ab726b24eedb534097bdd5d24a10491ded89506e9298bfa16a080ed14e2
+
+FULL SHORT A/B COMPLETED: both exit0, one retained map,18343poses,
+18351supported of18352native frames,8initializing,1unsupported tail frame.
+Both triangulate14/14CP and associate2999/2999GT at exact timestamps.
+No fabricated poses, independent-map stitching, or GT input to SLAM.
+Both include the same12s initializer/input barrier/holdout; mode1vs2 is the
+only config difference. Multithreaded initial maps differ slightly, so this
+single pair is not deterministic causal proof. Prior domain-only is context.
+
+Fixed-camera control: POSITIVE score result, metric scale still wrong.
+Score2D67.188379 (previous domain-only55.349924),10/14CP within1m,
+pose recall5m100%,1m69.78993%; CP Sim3scale.886115015.
+Full final atlas, all2999GT: rigid3D RMSE16.53212m, globalSim3scale.886223475,
+Sim3 RMSE1.09533m.14IMU-coasted frames across the full run.
+
+Online radial trial: POSITIVE global scale, NEGATIVE full-route accuracy.
+Calibration accepted at native77.092200762 after50KFs/+12.65s, followed by
+successful initialIMU and both early VI stages. Actual additive coefficient
+deltas cam0[-.0118196311,.0064513557],cam1[-.0136756881,.0063917872].
+Same copied graph peripheral heldout medians cam0(271obs)1.00275->.85441px,
+cam1(245obs)1.15618->.98770px; central errors also improve. Native-model pixel
+shift median at radius250-300px is1.277/1.892px, compared with.070/.081px at
+radius<100. This supports a geometry/calibration inconsistency; it does not
+uniquely establish that factory lens coefficients, rather than another model
+error absorbed by them, are physically wrong.
+
+Early live geometry at973identicalGT times over+20-300s: fixed/calibrated
+scale-to-GT.889980/.990011, metricSE3 RMSE6.24649/.61628m, shapeSim3
+.93542/.35441m. This genuine early gain DOES NOT describe the final route.
+Final online score28.952104,1/14CP within1m,pose recall5m67.28910%,
+1m4.26809%; CPscale.999090088. All2999finalGT: metricSE3 RMSE4.72581m,
+globalSim3scale1.001197027,Sim3 RMSE4.72332m. Global scale is close to1,
+but serious relative segment deformation remains.29coasted frames total.
+
+Original doorway790-840s,1000frames: fixed/calibrated coast13/0,
+median visual inliers205.5/222.5. Earlier520-540s,400frames: coast1/29,
+median inliers101/39. At528-530s, treatment logs optimizer-versus-prediction
+position differences19-22m at predicted speed~1.1m/s. Final-atlas analysis
+confirms lasting deformation around this segment, not just live-pose history.
+The exact optimizer/association/map-update cause remains unproven. Do not call
+this calibration wholly successful, or infer a threading race from these logs.
+Later+600s segment alone has calibrated scale.99473/Sim3 RMSE.23393m.
+
+Source audit identifies unsafe recovery acceptance at530.392200762:
+TrackLocalMap accepts RECENTLY_LOST with13inliers via its >10early return,
+before the IMU_STEREO15inlier check, retaining a22.349m optimized correction.
+The map mutex is held for this call and map_updated=0, so this within-call
+correction is not a concurrent BA update. Separately, the armed-failure state
+restore is in the monocular branch; the stereo branch simply returns false,
+then Track can copy the modified current Frame into mLastFrame. A failed
+optimizer also constructs a new pose/IMU prior before tracking acceptance.
+These state/acceptance paths need a coherent repair; merely nulling a pointer
+or raising a match threshold does not establish correct inertial rollback.
+They are not modified in this candidate. The initial source of the bad visual
+update and the full causal chain to final-map deformation remain to be tested.
+Further source trace confirms no later rollback before the Frame copy: during
+RECENTLY_LOST rejection, Frame pose is restored but mpcpi remains centred on
+the rejected optimized pose/velocity/bias. Frame's copy constructor copies that
+pointer, and the next last-frame optimizer uses it. This inconsistent pose/prior
+pair is a concrete state-lifecycle defect, regardless of whether the existing
+>10inlier recovery exception was intentional. A repair must keep the propagated
+state and its marginal prior consistent, including rejected visual factors.
+
+Read-only state audit: accepted post-BA2 gyro/accel bias norms are fixed
+.004217rad/s/.072524m/s², calibrated.003676/.052738. No explosive bias
+compensation. Gravity's exact vector was not logged; finite/normalization gates
+passed. Input body-to-cam0 extrinsic matches official calibration within2.7e-8;
+native IMU rectification and timestamps remain verified. No new quaternion,
+transform-direction or axis defect established by this experiment.
+
+Artifacts:
+experiments/lamaria_radial_full_comparison_20261003 (report, images, Reruns)
+experiments/lamaria_radial_fixed_short_full_20261003 (full control)
+experiments/lamaria_radial_online_short_full_20261003 (full treatment)
+build/orbslam3_lamaria_online_radial/tests/live_audit/final_atlas_audit.json
+
+Decision: retain fixed-camera joint initialization as the new best observed
+Short candidate; do not promote online calibration from this mixed result.
+History remains default. Medium's previous domain-candidate crash is unresolved
+and was not retested here. Next concrete target is the528-530s loss/recovery
+and pose/map consistency, while preserving the gains in metric initialization.
+Stop here for the requested major-experiment visual discussion, with no new
+estimator variants launched at this checkpoint.
+
+Final visualization verification: both full18,351-frame recordings pass
+rerun rrd verify, with zero missing images. The online final-map projection
+uses the accepted estimated intrinsics; fixed uses source calibration. The
+same native source-image hashes match in all10paired camera views. Root
+visually inspected full-route comparison and paired530.992s cam0 overlays:
+fixed retains many green mapped tracks while online has almost none. This
+earlier loss is outdoors on a bridge/walkway, not the790-840s doorway.
+Plain paths:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_radial_full_comparison_20261003/report.html
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_radial_full_comparison_20261003/fixed.rrd
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_radial_full_comparison_20261003/online.rrd
+Source trace:
+build/orbslam3_lamaria_online_radial/tests/live_audit/recovery_state_audit.txt

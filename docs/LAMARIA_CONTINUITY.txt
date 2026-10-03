@@ -1,0 +1,173 @@
+LaMAria full-sequence tracking — 2026-10-02
+
+Validation status
+-----------------
+The early-recovery and continuous profiles completed all 35,842 stereo inputs
+with one original map, zero resets, and 35,772 final poses (99.80%). The first
+70 frames are initialization. Both Reruns are verified and contain every image.
+The history profile additionally fixes trajectory attachments during inertial
+optimization and keyframe removal. Its actual-class regression and full sequence
+passed: one original map, zero resets, 35,772/35,842 poses, 168,031 landmarks.
+Rerun export completed and verified, with zero missing images. Estimator, export
+and coverage accounting all exited 0. The build and run launchers default to this
+profile, the continuous config, and temporal associations enabled together.
+Four workflow tests and both real default CLI dry-runs passed. The dry-run used
+all input timestamps and confirmed that ground truth stays out of the estimator.
+Independent decoding confirmed exactly 35,842 image, keypoint and trail records
+per camera in the completed RRD. There are no internal pose gaps after startup.
+On 35,832 identical observed frames per lens, median mapped counts improved from
+89 to 137 in cam0 (+54%) and 84 to 126 in cam1 (+50%) versus the production
+baseline, with identical detector inputs. Zero-green frames fell from about 13%
+to 0.57%/0.51%. These gains describe the combined profile, not the history fix alone.
+
+The changes
+-----------
+- Carry mutually matched recent observations into map associations within each
+  camera, retaining the existing geometric outlier checks and unique ownership.
+- Recover using either calibrated lens, with correct pooled indices and rig pose.
+- Traverse the intended temporal keyframe neighborhood without getting stuck.
+- Permit mapping during the existing bounded, initialized-IMU recovery interval.
+- Allow confident initialized-IMU recovery before the later BA2 refinement.
+- Use the camera model for coarse loop projection on native fisheye pixels.
+- Save inertial frame history against recent temporal keyframes; rebase affected
+  history exactly before keyframe removal. Keep visual matching references and
+  the optimization spanning tree unchanged.
+- Wait for optimization workers before export and account for all retained atlas
+  maps, every input timestamp, visual tracking, coasting, and resets separately.
+
+No detector count, local-map ratio, search radius, triangulation gate or geometric
+outlier threshold was relaxed. Calibration, input images and IMU corrections are
+unchanged by these continuity repairs. No ground truth enters SLAM. Independent
+map origins are never joined with an invented transform.
+
+Reproduce the explicit history profile
+-------------------------------------
+From /home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3:
+
+python3 pipeline/run/build_lamaria.py \
+  --patch-dir patches/orbslam3_lamaria_history \
+  --out build/orbslam3_lamaria_history --jobs 4
+
+The explicit profile switches below now equal the defaults. Use a fresh output
+name; previous recordings and logs are never overwritten:
+
+/home/raghav/miniconda3/envs/lamaria/bin/python pipeline/run/run_lamaria.py \
+  --build build/orbslam3_lamaria_history \
+  --config configs/orbslam3_lamaria/stereo_inertial_continuous.yaml \
+  --temporal-associations \
+  --dataset /media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/euroc_native_3_17 \
+  --timestamps /media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/euroc_native_3_17/timestamps.txt \
+  --kp0 /media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/aliked_kp_3_17 \
+  --kp1 /media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/aliked_kp_3_17_cam1 \
+  --calibrated-imu /home/raghav/workspace/MeckaAI/lamaria_audit_20261001/native_stereo/calibrated_imu/production_data.csv \
+  --gt /media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/dualimu/gt_tum_sequence_3_17.txt \
+  --out experiments/NEW_UNIQUE_NAME
+
+Add --dry-run to check the complete plan without creating a run. --gt is optional
+and is passed only to scoring/display. The selected Python needs numpy, scipy,
+OpenCV, and Rerun; the compiler/runtime image is the pinned insv/orbslam3:gdb.
+
+Outputs
+-------
+run.rrd: both real camera streams, green mapped/red unmapped observations and
+         persistent-ID trails, trajectory and growing actual landmark cloud.
+         The standard recording shows the primary map; this validated run has
+         exactly one map. Extra independent maps are explicit in raw atlas files.
+coverage.json: input count, final pose coverage, independent map epochs, resets,
+               and visual-versus-coasted frames. Read this before claiming a
+               single trajectory from a largest-map-only legacy export.
+traj.csv, points.csv, stats.csv, score.txt, config/, viz/: run output contract.
+atlas_*_trajectory.csv and atlas_*_points.csv: raw independent-map geometry.
+online_*.csv: actual online pose/state trace, including initialization/coasting.
+command.json and result.json: exact inputs, build/config hashes and exit status.
+
+Rendering reveals final optimized landmarks at their earliest surviving keyframe
+observations; culled observations and historical bundle-adjustment movements
+are unavailable. A subsequent audit fixed the old use of a mutable reference
+keyframe timestamp, which delayed 118,665 points by up to 74.95 seconds. New
+recordings open at the latest timestamp; rewind to inspect map growth. Green means a
+retained map-point association at that frame, not a promise of permanent survival.
+
+Limits and evidence
+-------------------
+Coverage is not accuracy. The final history trial has 9.142 m scale-1 SE3 ATE
+over this roughly 2 km open route (previous continuous trial: 9.255 m). Large
+final-only adjacent jumps fell from 115 to 2, and from 49 to 0 near 1804-1820 s.
+The two remaining 0.53/0.60 m steps near 1823 s have correct reference chains
+and accompany real local drift; they are still a limitation. One-second relative
+translation RMSE is 3.52 cm versus 9.17 cm in the preceding continuous trial.
+The old short production-baseline interval worsens from 1.238 to 1.767 m ATE;
+the coverage gain must not be presented as improvement on every accuracy metric.
+Zero coarse-loop projection calls occurred, so that fix gets no credit for this
+trial's accuracy. Ground-truth measurements are post-estimation checks only.
+
+Final run directory:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002
+Original verified recording (preserved):
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002/run.rrd
+Corrected reveal timing; opens at the latest timestamp:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002/viz/run_map_timing_fixed.rrd
+All 168,031 point coordinates/colors/radii and all non-map payloads are unchanged;
+both cameras retain 35,842 frames. Native Rerun verification passed. The original
+also contains all 168,031 points at its final timestamp, so the timing repair
+does not establish the cause of a reported missing-map view at that timestamp.
+Small final-time overview with the complete saved landmark cloud:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002/viz/full_map_overview.rrd
+Payload and timing validation:
+/home/raghav/workspace/MeckaAI/lamaria_audit_20261002_continuity/map_coverage_recheck/corrected_recording_validation.json
+
+LaMAria protocol scoring (performed after the run)
+------------------------------------------------
+sequence_3_17 is Additional Set / Long training data with 27 control points.
+Official local functions and independently verified official assets yield:
+  Score 2D: 49.8815336453 / 100
+  CP recall at 1 m: 40.7407407407% (11 / 27)
+  Pose recall at 5 m: 94.5570447859% (5785 / 6118)
+These are horizontal XY errors under one control-point-derived Sim(3), whose
+scale is 0.9640020814. The same alignment is reused for dense pose scoring;
+there is no second dense-GT fit. All five unassociated initial GT poses remain
+in the denominator. The 70 missing initialization input poses are not invented.
+This is a local single-sequence evaluation, not a test leaderboard submission.
+It supplements the scale-fixed 3D ATE above rather than replacing that diagnostic.
+Scripts, input trajectories, errors, hashes and independent review:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002/lamaria_score/scores.json
+
+Additional short and medium sequences (same estimator build)
+------------------------------------------------------------
+sequence_1_19 (official Short) and sequence_2_11 (official Medium) were processed
+with the same binary, ALIKED1500 extraction/binarization and tracking settings.
+Only each recording's factory camera/rig/IMU calibration and inputs differ.
+Both estimators exited 0, but neither produced one continuous full-route map:
+
+  Short: 2 retained maps, 0 active-map resets.
+    Largest map: 15,304 / 18,352 source poses (83.3915%).
+    All independent maps: 18,316 source poses; these are not one trajectory.
+    Score2D 39.6567; CP recall@1m 14.2857%; pose recall@5m 80.6936%.
+  Medium: 3 retained maps, 1 active-map reset.
+    Largest map: 15,709 / 23,748 source poses (66.1487%).
+    All independent maps: 23,494 source poses; these are not one trajectory.
+    Score2D 55.7524; CP recall@1m 66.6667%; pose recall@5m 67.6218%.
+
+Scores use the largest map selected without GT and retain the full sequence's
+control-point and reference-pose denominators. No independent origins are joined.
+Short's final source image and Medium's final two images extend beyond calibrated
+IMU support; these were explicitly excluded from SLAM input, preserved in the
+source fixture, and retained in source-frame coverage accounting. The full
+timestamp lists are copied to config/source_timestamps_ns.txt in each run.
+
+Run directories:
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_short_1_19_20261002
+/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_medium_2_11_20261002
+Each run's run.rrd contains both supported camera streams and the primary map.
+viz/atlas_overview.rrd contains ALL retained maps in separate spatial views.
+Official results and reproducibility information are in lamaria_score/.
+
+Reusable scorer: pipeline/run/score_lamaria.py --run RUN --assets SEQUENCE_ASSETS
+  --sequence SEQUENCE --map-scope largest --source-timestamps FULL_TIMESTAMPS
+It refuses to overwrite results. Default single-map mode rejects fragmented
+inputs; largest mode explicitly reports omitted map poses. Four focused tests
+passed, and the generalized scorer reproduced the previous long score exactly.
+
+Sources live in patches/ and isolated build overlays; third_party is untouched.
+Full experiments, causal tests, comparisons and provenance:
+/home/raghav/workspace/MeckaAI/lamaria_audit_20261002_continuity/README.txt
