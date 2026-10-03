@@ -9,6 +9,11 @@ confirmed (223 frames, about 11.15 s); tilt and terminal-drift causes remain
 unverified. `docs/NEXT_AGENT_PROMPT.txt` is the copy-paste session prompt. Discuss
 the saved evidence before resuming implementation; do not automatically rerun.
 
+Subsequent discussion: `IDEA_POOL.md` I13–I16 records the useful parts of a friend's
+review of the old continuity arms, with mathematical and causal caveats. No code
+or experiment changed: recovery-window confirmation, Medium777 s offline audit,
+honest VI/calibration validation and bounded memory remain proposals.
+
 **Latest completed work:** the requested full Baby Long Rerun now exists and
 passed verification, including two additional reconstructed Baby-track panels
 and logged SOS map colours. One authorized offline fixed-camera native-graph

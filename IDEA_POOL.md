@@ -383,6 +383,142 @@ support or geometry at the late failure.
 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/evaluation_baby_20261004/run.rrd
 ```
 
+## I13. Recovery confirmation with consistent visual and inertial state
+
+**Origin:** friend's review of the earlier continuity experiments, assessed
+against `docs/RECOVERY_HANDOFF_20261003.md`. **Status:** proposed; no new code or
+run. Relevant to Medium recovery and Baby SOS return, not proof that this explains
+all current Long drift or the apparent tilt in I12.
+
+**Confirmed mechanism:** visual relatch can pass its strong geometric gate, then
+lose most support in local VI and still commit through the inherited recent-loss
+threshold. Examples include 84 visual inliers becoming 11, and Medium commits
+with 16–21 inliers and 5.49–8.52 m visual/VI disagreement. Disagreement alone does
+not establish which pose is correct. Raising the floor to 15 misses these Medium
+events; the weak-support rescue also means the final counts need not all pass
+the strict visual gate.
+
+**Candidate design:** retain both the visual recovery hypothesis and original
+propagated state. Confirm recovery across a short, bounded window before publishing
+a consistent pose, velocity, bias and new marginal prior. Evaluate:
+
+- Survival of the **same originally verified landmark/feature identities** under
+  strict final residuals; record new associations separately. Require absolute
+  support and camera/image distribution too. A ratio alone can certify very few
+  or spatially degenerate observations.
+- Visual/IMU disagreement relative to propagated uncertainty, including rotation
+  and its effect on gravity/translation. Coast duration is useful context, but a
+  hand-chosen drift envelope is only an approximation. A hard metre cap can reject
+  a correct recovery. Do not assume unmeasured covariance is calibrated.
+- Continued geometric support and inertial consistency over the window, followed
+  by transactional commit or rollback. A temporary visual-only candidate branch
+  is worth testing; it must not silently replace the live VI state/prior.
+
+**Corrections to the suggested shortcut:** a 40% ratio would not reject every
+quoted example: 30/54 is 55.6%, and 21/(45+5) is 42%. Current total counts also
+mix old and new matches, so they do not measure identity retention. Biases are
+sensor-frame quantities, but finite-differencing positions across a recovery
+coordinate jump can invent velocity. `SetNewBias` alone does not reconcile
+anchors, covariance and marginal priors. Reconcile the temporally valid states
+and integration intervals jointly; do not transplant a retrieved KF into the
+IMU chain. Avoid simply setting `mnLastRelocFrameId` without auditing its side
+effects and the incomplete reset path.
+
+**Future decisive comparison:** captured recovery transactions, original versus
+candidate return windows, visual/VI pose overlays, retained identities, state
+changes and history continuity. Then one authorized full-sequence comparison
+with the same inputs. Preserve successful normal tracking and the Baby SOS scope.
+
+## I14. Explain the repeatable Medium association collapse before another replay
+
+**Origin:** friend's offline-debugging proposal. **Status:** proposed read-only
+analysis of the existing Medium failure near native **777.4–777.7 s**. This is
+not the Long startup gap or its late SOS jump.
+
+Identify the physical scene in both camera streams, then trace the funnel from
+available landmarks to predicted pixels, search-window candidates, descriptor
+matches and accepted geometric inliers. Inspect descriptor-distance distributions,
+predicted-pixel offsets, search radii, projection validity, view-angle/depth gates,
+landmark culling and support ages. Include motion blur, occlusion and lighting in
+the image evidence. Use saved telemetry where available; mark missing internal
+data explicitly rather than claiming the exact online association was replayed.
+
+Direct matching's many sub-15-match candidates show that removing vocabulary
+partitions was insufficient. They do **not** disprove a vocabulary/descriptor
+domain problem. Candidate selection, binary descriptor quality, viewpoint overlap,
+projection gating and VI acceptance are separate stages. Audit which candidates
+were actually tested and whether available atlas-wide retrieval was invoked.
+Broader retrieval may find an earlier overlapping view; a route with no overlap
+cannot be recovered through retrieval alone. Cross-map retrieval is a hypothesis,
+not a merge: verified geometry and inertial/gauge consistency are still required.
+
+**Future evidence:** annotate the scene and show true candidate pixels versus
+predictions, distributions before each gate and changes in surviving landmarks.
+Explain the collapsed stage first. Byte-identical repeats reveal runtime variation,
+but do not establish that all full-run comparisons are meaningless or that one
+offline success guarantees online recovery.
+
+## I15. Validate global VI and calibration against the right reference
+
+**Origin:** friend's critique of Arm C. **Status:** proposed validator repair;
+43 rejected periodic trials are measured, not proof that global VI cannot help.
+The later independent fixed-graph solve improved 43.73→45.03 (I11).
+
+Observations withheld from the current periodic solve may already have influenced
+earlier local BA. They are not genuinely unseen measurements. Likewise v2's
+free-versus-fixed candidate comparison alone does not establish improvement over
+the live map. This weakens attribution of the Short80.20 gain to calibration alone;
+the measured score itself remains valid. Prior local optimization does not make
+improvement mathematically impossible or establish that every rejected candidate
+was good.
+
+**Bounded candidate:** require local validation not to worsen beyond a justified
+tolerance relative to the live state, alongside reduction in a comparable full
+VI objective evaluated on the same factors/weights and consistent preintegration.
+Retain support and inertial-state checks. Separate visual, IMU and bias costs;
+one term must not hide collapse in another. A reduced training objective alone
+is insufficient, and changed robust weights or factor sets invalidate a naive
+before/after comparison. This is a hypothesis, not a request to loosen thresholds.
+
+**Stronger candidate:** reserve observations or temporal validation windows with
+an explicit exclusion policy across local/periodic optimization. Audit whether
+those measurements still influence triangulation, tracking, initialization or
+selection before calling them unseen. Shared landmarks/poses and repeated camera
+parameter selection create dependencies. Persistent holdout is not automatically
+a small change: it removes information and can alter weak-section survival.
+Keep enough usable geometry, record exactly what was excluded, and use separate
+recordings for final generalization claims.
+
+**Future evidence:** live/fixed/free validation measured consistently, costs by
+factor family, parameter motion, held-out centre/periphery errors, coverage and
+official score. Do not infer calibration correctness from accepted-trial count.
+
+## I16. Bounded landmark-memory assistance with revisable associations
+
+**Origin:** friend's Arm B proposal. **Status:** proposed alternative to the
+earlier memory implementation, whose extra surviving associations and mixed
+scores are documented in `docs/CONTINUITY_EXPERIMENTS_20261003.md`.
+
+Retain correspondence proposals while limiting their authority: track their
+provenance and hop age; allow a stronger verified projection match to replace
+them; retain feature-slot uniqueness and both directions of landmark ownership.
+Consider larger observation uncertainty until geometric confirmation, and keep
+separate counts for tentative seeds and confirmed mature map support so seeds
+cannot conceal a need for fresh keyframes/triangulation. Do not automatically
+exclude genuinely confirmed observations from every keyframe criterion.
+
+Suggested sigma inflation of 2–3 times and a few-hop cap are experiment settings,
+not established optima. Pose uncertainty and radius-dependent errors matter;
+arbitrary downweighting can discard useful evidence. Replacing associations must
+be transactional and clean old ownership. More keyframes can also increase
+backend load. The three proposed mechanisms are plausible failure paths, not
+proven separate causes of Arm B's score regression.
+
+**Future evidence:** seeded versus confirmed support, identity changes, false
+track persistence, keyframe insertion and triangulation rates, then continuity
+and score. Test this separately from Baby SOS and recovery-window changes so the
+result remains interpretable. Do not replace healthy v2 tracking by default.
+
 ## Wider idea inventory — retained, not the current discussion scope
 
 The detailed hypotheses, attempted work, and scores remain in `ROADMAP.md` and
