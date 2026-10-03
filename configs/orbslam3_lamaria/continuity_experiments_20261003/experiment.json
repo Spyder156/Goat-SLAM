@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-03",
+  "scope": "Three independent variants, full Medium and Long each; no knot/CP estimator changes.",
+  "source_commit": "a4fb2f88e2e03c556c1c6adc7770e2de633778dc",
+  "frozen_reference": "orbslam3_lamaria_online_full_v2",
+  "geometric_thresholds": "unchanged",
+  "same_cached_inputs": true,
+  "max_parallel_replays": 2,
+  "cpus_per_replay": 4,
+  "variants": {
+    "recovery_direct": {
+      "build": "orbslam3_lamaria_recovery_direct_20261003",
+      "hypothesis": "Bypass ORB vocabulary partitions for binary ALIKED recovery; retain geometry gates and transactional relatch rollback.",
+      "configs": {
+        "medium": {
+          "path": "configs/orbslam3_lamaria/continuity_experiments_20261003/recovery_direct_medium.yaml",
+          "sha256": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931",
+          "source_sha256": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931"
+        },
+        "long": {
+          "path": "configs/orbslam3_lamaria/continuity_experiments_20261003/recovery_direct_long.yaml",
+          "sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c",
+          "source_sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c"
+        }
+      }
+    },
+    "tracking_memory": {
+      "build": "orbslam3_lamaria_tracking_memory_20261003",
+      "hypothesis": "Retain accepted landmark descriptor identities briefly across weak frames with unchanged native projection gates.",
+      "configs": {
+        "medium": {
+          "path": "configs/orbslam3_lamaria/continuity_experiments_20261003/tracking_memory_medium.yaml",
+          "sha256": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931",
+          "source_sha256": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931"
+        },
+        "long": {
+          "path": "configs/orbslam3_lamaria/continuity_experiments_20261003/tracking_memory_long.yaml",
+          "sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c",
+          "source_sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c"
+        }
+      }
+    },
+    "periodic_vi": {
+      "build": "orbslam3_lamaria_periodic_vi_20261003",
+      "hypothesis": "Fixed-intrinsic periodic full VI from BA2 onward, independently scheduled per map; isolate periodic geometry refinement.",
+      "configs": {
+        "medium": {
+          "path": "configs/orbslam3_lamaria/continuity_experiments_20261003/periodic_vi_medium.yaml",
+          "sha256": "b30d056a584a89150b7469c243e90405ec36410548d2be3ec9bc5b9573e3927c",
+          "source_sha256": "a33d68190b5815e742dd219ccdc34e6e085156513a880e0fc0adbc43b081b931"
+        },
+        "long": {
+          "path": "configs/orbslam3_lamaria/continuity_experiments_20261003/periodic_vi_long.yaml",
+          "sha256": "70434194c27a33ef4e2fd99ef02e587be64caad00f7e83beee764cba5183720c",
+          "source_sha256": "6adf86a286d5cf4f9e037d19f1a323721965d0f5bd437b8f3eb9f4613139111c"
+        }
+      }
+    }
+  },
+  "reference_scores": {
+    "medium": 62.76479920913107,
+    "long": 34.4589007555
+  },
+  "historical_long_different_calibration": 49.881533645273585,
+  "evaluation": "Existing official scorer, largest map selected without GT, all native input coverage retained.",
+  "promotion_rule": "Report score, connected coverage, map count, CP recovery, scale, trajectory discontinuities and regression; no result inferred from map count alone."
+}
