@@ -133,6 +133,7 @@ def runner_args(manifest, entry, case, run_dir, args):
         image=build_manifest["image"], cpus=args.cpus, timeout=0,
         dry_run=True, temporal_associations=True, skip_viz=not args.with_viz,
         match_diagnostics=getattr(args, "match_diagnostics", False),
+        baby_features=getattr(args, "baby_features", False),
         debugger=getattr(args, "debugger", False))
 
 
@@ -145,6 +146,8 @@ def runner_command(manifest, opts):
         command += ["--skip-viz"]
     if getattr(opts, "match_diagnostics", False):
         command += ["--match-diagnostics"]
+    if getattr(opts, "baby_features", False):
+        command += ["--baby-features"]
     if getattr(opts, "debugger", False):
         command += ["--debugger"]
     return command
@@ -220,6 +223,7 @@ def main():
     parser.add_argument("--cpus", type=float, default=4)
     parser.add_argument("--with-viz", action="store_true", help="Render Rerun automatically; default defers it to render.sh")
     parser.add_argument("--match-diagnostics", action="store_true", help="Enable per-frame matcher logging without changing thresholds")
+    parser.add_argument("--baby-features", action="store_true", help="Opt in to passive BabyFeature tracking with SOS-only estimator use")
     parser.add_argument("--debugger", action="store_true", help="Capture all-thread GDB backtraces if the estimator fails")
     args = parser.parse_args()
     if args.config and args.sequence == "all":

@@ -54,6 +54,8 @@ def docker_command(args, run_dir, camera_dirs, imu_csv, image_targets=()):
         command += ["-v", f"{host}:{destination}:{mode}"]
     if getattr(args, "match_diagnostics", False):
         command += ["-e", "LAMARIA_MATCH_DIAGNOSTICS=1", "-e", "LAMARIA_MATCH_DIAG_EVERY=1"]
+    if getattr(args, "baby_features", False):
+        command += ["-e", "LAMARIA_BABY_FEATURES=1"]
     program = ["/build/bin/stereo_lamaria_euroc",
                "/orb/Vocabulary/ORBvoc.txt", "/run/config/settings.yaml", "/run/input/euroc",
                "/run/config/timestamps_ns.txt", run_dir.name]
@@ -137,6 +139,7 @@ def run(args):
               "feature_directories": [str(args.kp0.resolve()), str(args.kp1.resolve())],
               "visualization_skipped": skip_viz,
               "match_diagnostics": getattr(args, "match_diagnostics", False),
+              "baby_features": getattr(args, "baby_features", False),
               "debugger": getattr(args, "debugger", False),
               "ground_truth_used_by_estimator": False}
     if args.dry_run:
@@ -243,6 +246,8 @@ def main():
                         help="Diagnostic run: retain raw SLAM exports and coverage, defer Rerun rendering")
     parser.add_argument("--match-diagnostics", action="store_true",
                         help="Log local-map matching diagnostics every frame; matching thresholds remain unchanged")
+    parser.add_argument("--baby-features", action="store_true",
+                        help="Enable the experimental passive BabyFeature tracker and SOS-only visual-inertial constraints")
     parser.add_argument("--debugger", action="store_true",
                         help="Run under batch GDB and retain all-thread backtraces on failure; nonzero debugger exits remain failures")
     parser.add_argument("--dry-run", action="store_true")
