@@ -3,6 +3,12 @@
 Completed locally on **2026-10-04**; identifier retains launch date `20261003`.
 Branch: `experiments/BabyFeats`. **One full Long replay**, not a leaderboard submission.
 
+**Later update, 2026-10-04:** the requested complete four-panel Baby Rerun finished
+and passed verification. A separate fixed-camera offline native VI refinement
+scored 45.027586 with unchanged coverage. The Rerun remains this original 43.729292
+run. See `docs/BABYFEATURES_NATIVE_VI_20261004.md` for exact artifacts, and
+`docs/RESUME_20261004.md` for the user's latest startup/drift/tilt observations.
+
 ## Result and decision
 
 **Positive for continuity, incomplete for accuracy.** One map survived after startup,

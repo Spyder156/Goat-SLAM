@@ -58,6 +58,7 @@ Scores were checked against saved `lamaria_score/scores.json` artifacts when thi
 | S22 | Long, periodic fixed VI | 37.630917 | 16/27 | 11/27 | 3545/6118 | 13 | Above native v2; below historical Long; still fragmented |
 | S23 | Medium, unchanged v2 repeat | 63.086620 | 13/18 | 12/18 | 2497/4083 | 4 | Reproduces saved v2 score; no estimator change |
 | S24 | Long, BabyFeatures SOS | **43.729292** | **27/27** | 4/27 | 6078/6118 | **1** | No split after startup; 15 SOS returns; residual jumps and metre-scale error remain |
+| S25 | S24 + final native-graph fixed-camera global VI | **45.027586** | **27/27** | 5/27 | 6078/6118 | **1** | +1.298294, identical coverage; 1.62 m jump remains |
 
 The chronological history is not a monotonic leaderboard ladder. Different sequences, coverage, feature graphs, and optimizer budgets matter. Do not compare Long 49.88 with Short 80.20 as the effect of one change.
 
@@ -92,6 +93,7 @@ S21 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_conti
 S22 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/periodic_vi_long/runs/periodic_vi_long_long_full
 S23 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_continuity_batch_20261003/frozen_v2_repeat_medium/runs/frozen_v2_repeat_medium_medium_full
 S24 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_long_20261003/runs/lamaria_babyfeats_long_20261003_long_full
+S25 /media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_babyfeats_native_vi_20261004/runs/vi_fixed
 ```
 
 ## 3. The experiments, one by one
@@ -716,7 +718,45 @@ replaced. Stop here for discussion before another implementation family.
 Full report and exact evidence: `docs/BABYFEATURES_LONG_20261003.md` and
 `docs/BABYFEATURES_LONG_20261003.json`. Diagnostic PNGs include the full evaluated
 route, map continuity, first-SOS camera views, and the remaining late SOS jump.
-No new full Rerun was rendered for this fast experiment.
+No new full Rerun was rendered during the initial fast experiment. The later
+requested full recording completed on 2026-10-04; see E40 and its report.
+
+### E40. Final fixed-camera VI on the saved Baby Long native graph
+
+Latest session ended for the user's usage limit. Documentation only after this
+completed result; no new experiment follows it. User flags missing startup,
+terminal drift and apparent tilt. Startup loss is confirmed, the tilt/drift
+mechanism is not. Resume context: `docs/RESUME_20261004.md`.
+
+**Tried:** one offline sparse-Schur VI solve on S24's 2,401 keyframes, 156,557
+landmarks and 1,119,060 native observations. Last accepted lenses and physical
+rig/IMU extrinsics remain fixed. No new SIFT extraction or SLAM replay. Calibrated
+native IMU reconstructs velocity/bias/gravity states, followed by joint keyframe
+pose/XYZ/inertial-state optimization. GT remains evaluation-only.
+
+**Modest positive result:** S25 **45.027586**, +1.298294; identical 35,619 timestamps,
+99.377825% native coverage, one map and 27/27 CPs. CP within 1 m increased 4→5;
+dense horizontal RMSE 2.933179→2.754464 m. Sixteen CPs improved, eleven worsened.
+The remaining 1.618828 m step became 1.622238 m: not repaired. Historical Long
+49.881534 remains stronger and preserved.
+
+Eight adapter/history tests plus the synthetic native VI contract passed. The
+real solve took 78.52 s, reported convergence at a cost plateau after 39 outer
+calls / 15 accepted updates / 23 rejected trials. Objective decreased 14.96%;
+final projectable pixel RMS 0.803250. Exact IMU reintegration changed inertial
+cost by only 2.96e-7 relative. This is local numerical termination, not proof of
+optimal geometry. Invalid-projection/support pruning removed 35 observations
+and five points. No acceptance thresholds were relaxed. Non-keyframe poses retain
+their original relative transform to their corrected reference keyframe; they
+were not separately optimized or interpolated.
+
+**Visualization:** `comparison/comparison.png` under the S25 experiment shows the
+matched routes and all CP bars. The separate full S24 Rerun is now verified at
+`experiments/lamaria_babyfeats_long_20261003/evaluation_baby_20261004/run.rrd`, with
+two normal and two Baby panels plus SOS map colours. Baby identities are passive
+descriptor reconstructions, not recorded solver inlier IDs; 453 logged count
+comparisons agree. See `docs/BABYFEATURES_NATIVE_VI_20261004.md` for absolute paths,
+limits and provenance. Further runs are deferred for visual discussion.
 
 ## 4. What these results establish and what they do not
 
