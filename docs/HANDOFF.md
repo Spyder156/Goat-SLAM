@@ -111,6 +111,18 @@ Existing build tooling checks the recorded vendor baseline and uses an existing 
 
 Offline SIFT visual rig BA on the 67.188379 Short reference scored **64.705686**; full global VI-BA scored **67.194208** with fixed intrinsics and **67.183330** with adjustable intrinsics. These tested refinements were negative or neutral, not a demonstrated alternative to v2. The calibrated offline solve/export/score finished, but its Rerun was intentionally stopped and remains partial.
 
+## Round of 2026-10-04: mechanism arms after the decomposition
+
+See `docs/BATCH_20261004.md` for the full arm table. Established: the Medium 860-890 s split and the
+end-of-route scale creep are inertial-state failures (a rejected visual update leaves a bad velocity;
+biases absorb scale under weak vision). Rejected-update rollback gave Medium 78.59 with one map; IMU
+bias random walks /10 gave Long 49.19-50.04 and Short 81.39. Negative, with the reason recorded:
+gyro-only pre-init coasting, coast-age-widened search, dense ALIKED caches, a soft pedestrian speed
+prior inside pose-only optimisation. New tooling: `pipeline/run/batch_runner.py`,
+`pipeline/eval/experiment_table.py`, `pipeline/eval/decompose_lamaria_errors.py`,
+`pipeline/datasets/extract_aliked_dense.py`. Frozen builds, baselines and the 80.20/62.76/49.88 artifacts
+are untouched; new builds live under `build/orbslam3_lamaria_*_20261004` with their `patches/` packages.
+
 ## Evaluation and working contracts
 
 - Score2D averages official horizontal CP-error credits; missing CPs receive zero. PoseRecall includes every dense-GT timestamp in its denominator. Neither is the native-frame coverage count or dense ATE.
