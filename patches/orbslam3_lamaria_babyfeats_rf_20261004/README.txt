@@ -1,0 +1,1 @@
+BabyFeatures tree + robust Frame (2026-10-04): every image constructor allocates mpMutexImu before its zero-keypoint early return; identical Tracking to orbslam3_lamaria_babyfeats_20261003. Fixes the std::system_error abort on a frame whose keypoints are all rejected (first dense-ALIKED Medium frame: 7 detections, all outside the valid domain).
