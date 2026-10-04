@@ -32,8 +32,8 @@ def calibrated_manifest(csv_path, manifest_path, first, last):
     manifest = json.loads(manifest_path.read_text())
     if manifest.get("output_sha256") != sha256(csv_path):
         raise ValueError("Calibrated IMU hash does not match its manifest")
-    if manifest.get("ground_truth_used") is not False or manifest.get("imu_label") != "imu-right":
-        raise ValueError("Require factory-only imu-right calibration manifest for this configuration")
+    if manifest.get("ground_truth_used") is not False or manifest.get("imu_label") not in ("imu-right", "imu-fused"):
+        raise ValueError("Require a factory-only imu-right or imu-fused (right-frame, right-grid) calibration manifest")
     if not (manifest["first_timestamp_ns"] < first and manifest["last_timestamp_ns"] > last):
         raise ValueError("Calibrated IMU does not bracket the selected camera timestamps")
     return manifest
