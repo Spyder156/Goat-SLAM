@@ -48,8 +48,15 @@ def read_keyframes(source):
     return path, rows, poses, stamps
 
 
-def transport_history(rows, old_keyframes, new_keyframes):
-    """Apply new_T_world_ref * old_T_ref_world to existing body poses."""
+def transport_history(rows, old_keyframes, new_keyframes, kf_stamps=None, missing_reference='error'):
+    """Apply new_T_world_ref * old_T_ref_world to existing body poses.
+
+    missing_reference='nearest': a history pose whose reference keyframe was culled before export is
+    transported with the correction of the surviving keyframe nearest in time (expects kf_stamps in ns;
+    row 't_s' in seconds). The number of such rows is left in transport_history.last_substitutions.
+    """
+    transport_history.last_substitutions = 0
+    surviving = sorted((stamp, identity) for identity, stamp in (kf_stamps or {}).items() if identity in old_keyframes)
     if set(old_keyframes) != set(new_keyframes):
         raise ValueError('Refinement must preserve every retained keyframe')
     corrections = {}
@@ -63,7 +70,11 @@ def transport_history(rows, old_keyframes, new_keyframes):
     for i, row in enumerate(rows):
         identity = int(row['reference_kf_id'])
         if identity not in corrections:
-            raise ValueError(f'Missing surviving reference keyframe {identity}')
+            if missing_reference != 'nearest' or not surviving:
+                raise ValueError(f'Missing surviving reference keyframe {identity}')
+            stamp = int(Decimal(row['t_s']) * 1000000000)
+            identity = min(surviving, key=lambda item: abs(item[0] - stamp))[1]
+            transport_history.last_substitutions += 1
         old = np.array([float(row[key]) for key in POSE_KEYS])
         if not np.isfinite(old).all():
             raise ValueError('Nonfinite source history pose')
@@ -73,7 +84,7 @@ def transport_history(rows, old_keyframes, new_keyframes):
     return output
 
 
-def export(source, prepared, model, out):
+def export(source, prepared, model, out, missing_reference='error'):
     source, prepared, model, out = [Path(path).resolve() for path in (source, prepared, model, out)]
     if out.exists():
         raise FileExistsError(f'Choose a fresh output: {out}')
@@ -95,8 +106,9 @@ def export(source, prepared, model, out):
         raise ValueError('Solver changed the retained keyframe timestamps')
     solver_by_stamp = dict(zip(solver_stamps, solver_body))
     new_keyframes = {identity: solver_by_stamp[stamp] for identity, stamp in kf_stamps.items()}
-    body = transport_history(rows, old_keyframes, new_keyframes)
-    identity_body = transport_history(rows, old_keyframes, old_keyframes)
+    body = transport_history(rows, old_keyframes, new_keyframes, kf_stamps, missing_reference)
+    nearest_reference_rows = transport_history.last_substitutions
+    identity_body = transport_history(rows, old_keyframes, old_keyframes, kf_stamps, missing_reference)
     original_body = np.array([[float(row[key]) for key in POSE_KEYS] for row in rows])
     identity_position_error = float(np.max(np.abs(identity_body[:, :3] - original_body[:, :3])))
     identity_rotation_error = float(np.max((Rotation.from_quat(identity_body[:, 3:]).inv() *
@@ -193,6 +205,7 @@ def export(source, prepared, model, out):
     steps = np.linalg.norm(np.diff(body[:, :3], axis=0), axis=1)
     transport = {'method': 'new_world_from_reference_body * old_reference_body_from_world * old_world_from_body',
                  'source_history_identity_max_position_error_m': identity_position_error,
+                 'history_rows_transported_via_nearest_surviving_keyframe': nearest_reference_rows,
                  'source_history_identity_max_rotation_error_rad': identity_rotation_error,
                  'source_pose_count': len(stamps), 'optimized_keyframes': len(new_keyframes),
                  'keyframe_only_optimization': True, 'new_timestamps_generated': False, 'interpolation_performed': False,
@@ -226,5 +239,7 @@ if __name__ == '__main__':
     parser.add_argument('--prepared', type=Path, required=True)
     parser.add_argument('--model', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--missing-reference', choices=('error', 'nearest'), default='error',
+                        help='History poses whose reference keyframe was culled: fail (default) or use the nearest surviving keyframe')
     args = parser.parse_args()
-    export(args.source_run, args.prepared, args.model, args.out)
+    export(args.source_run, args.prepared, args.model, args.out, args.missing_reference)
