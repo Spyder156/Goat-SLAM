@@ -1,0 +1,575 @@
+--- a/src/Tracking.cc
++++ b/src/Tracking.cc
+@@ -27,6 +27,36 @@
+ #include "G2oTypes.h"
+ #include "Optimizer.h"
+ #include "TrackingStateRollback.h"
++#include "LamariaBabyTracker.h"
++#include "LamariaBabyAssist.h"   // babyassist (2026-10-04)
++#include "LamariaKnot.h"   // knotregime (2026-10-05)
++#include <limits>
++
++namespace {
++// coastguard (2026-10-04). Pure inertial propagation during a coast diverged
++// to 6-41 m/s within 14 s on Medium (868-882 s) from a poisoned velocity/bias
++// left by a failed visual update; a head-worn pedestrian never exceeds ~3 m/s.
++// Bound the propagated body speed while coasting so landmarks stay findable.
++// LAMARIA_COAST_GUARD=0 disables. File scope: frozen Tracking.h layout.
++const float kCoastGuardMaxSpeed = 3.0f;   // m/s, walking/jogging bound
++bool CoastGuardEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("LAMARIA_COAST_GUARD");
++        return !(value && std::string(value) == "0");
++    }();
++    return enabled;
++}
++void CoastGuardVelocity(Eigen::Vector3f& velocity, double timestamp) {
++    const float speed = velocity.norm();
++    if(speed > kCoastGuardMaxSpeed) {
++        velocity *= kCoastGuardMaxSpeed / speed;
++        static long fires = 0;
++        if(++fires % 20 == 1)
++            std::cout << std::setprecision(12) << "[COAST_GUARD] t=" << timestamp << " propagated speed " << speed
++                      << " m/s bounded to " << kCoastGuardMaxSpeed << std::endl;
++    }
++}
++}
+ #include "Pinhole.h"
+ #include "KannalaBrandt8.h"
+ #include "MLPnPsolver.h"
+@@ -646,6 +676,7 @@
+ 
+ Tracking::~Tracking()
+ {
++    if(LamariaBabyEnabled())LamariaBabyStates().erase(this);
+     //f_track_stats.close();
+ 
+ }
+@@ -2937,6 +2968,7 @@
+         Eigen::Matrix3f Rwb2 = IMU::NormalizeRotation(Rwb1 * mpImuPreintegratedFromLastKF->GetDeltaRotation(mpLastKeyFrame->GetImuBias()));
+         Eigen::Vector3f twb2 = twb1 + Vwb1*t12 + 0.5f*t12*t12*Gz+ Rwb1*mpImuPreintegratedFromLastKF->GetDeltaPosition(mpLastKeyFrame->GetImuBias());
+         Eigen::Vector3f Vwb2 = Vwb1 + t12*Gz + Rwb1 * mpImuPreintegratedFromLastKF->GetDeltaVelocity(mpLastKeyFrame->GetImuBias());
++        if(mbCoasting && CoastGuardEnabled()) CoastGuardVelocity(Vwb2, mCurrentFrame.mTimeStamp);   // coastguard
+         mCurrentFrame.SetImuPoseVelocity(Rwb2,twb2,Vwb2);
+ 
+         mCurrentFrame.mImuBias = mpLastKeyFrame->GetImuBias();
+@@ -2954,6 +2986,7 @@
+         Eigen::Matrix3f Rwb2 = IMU::NormalizeRotation(Rwb1 * mCurrentFrame.mpImuPreintegratedFrame->GetDeltaRotation(mLastFrame.mImuBias));
+         Eigen::Vector3f twb2 = twb1 + Vwb1*t12 + 0.5f*t12*t12*Gz+ Rwb1 * mCurrentFrame.mpImuPreintegratedFrame->GetDeltaPosition(mLastFrame.mImuBias);
+         Eigen::Vector3f Vwb2 = Vwb1 + t12*Gz + Rwb1 * mCurrentFrame.mpImuPreintegratedFrame->GetDeltaVelocity(mLastFrame.mImuBias);
++        if(mbCoasting && CoastGuardEnabled()) CoastGuardVelocity(Vwb2, mCurrentFrame.mTimeStamp);   // coastguard
+ 
+         mCurrentFrame.SetImuPoseVelocity(Rwb2,twb2,Vwb2);
+ 
+@@ -2990,6 +3023,9 @@
+ 
+ void Tracking::Track()
+ {
++    LamariaBabyTracker* baby=LamariaBabyEnabled()?&LamariaBabyState(this):nullptr;
++    bool babyAccepted=false;
++    std::unique_ptr<TrackingStateRollback> babyRelatchSnapshot;
+     if(mnMapDiagFrames > 0){
+         mnMapDiagFrames--;
+         std::cout << "[MAP-DIAG] frame " << mCurrentFrame.mnId
+@@ -3078,6 +3114,14 @@
+         std::chrono::steady_clock::time_point time_StartPreIMU = std::chrono::steady_clock::now();
+ #endif
+         PreintegrateIMU();
++        {   // knotregime: per-frame detector sample (gyro RMS over this frame's IMU samples, previous speed)
++            double sumsq = 0.0; int count = 0;
++            for(size_t k = 0; k < mvImuFromLastFrame.size(); ++k) { sumsq += mvImuFromLastFrame[k].w.squaredNorm(); ++count; }
++            const double gyroRms = count ? std::sqrt(sumsq / count) : std::numeric_limits<double>::quiet_NaN();
++            const double speed = (mpAtlas->isImuInitialized() && mLastFrame.isSet()) ? static_cast<double>(mLastFrame.GetVelocity().norm()) : std::numeric_limits<double>::quiet_NaN();
++            const double dt = mLastFrame.isSet() ? mCurrentFrame.mTimeStamp - mLastFrame.mTimeStamp : 0.0;
++            lamaria_knot::Update(mCurrentFrame.mTimeStamp, gyroRms, speed, dt);
++        }
+ #ifdef REGISTER_TIMES
+         std::chrono::steady_clock::time_point time_EndPreIMU = std::chrono::steady_clock::now();
+ 
+@@ -3101,6 +3145,28 @@
+         mbMapUpdated = true;
+     }
+ 
++    if(baby)baby->begin(mCurrentFrame,static_cast<long>(pCurrentMap->GetId()),mbMapUpdated);
++    // Solver-refined historical SOS poses must reach the native exporter too.
++    // Reanchor only retained frames to a live temporal KF in this same map.
++    auto refreshBabyHistory=[&]() {
++        if(!baby || !mpLastKeyFrame || mpLastKeyFrame->isBad() ||
++           mpLastKeyFrame->GetMap()!=pCurrentMap)return;
++        auto time=mlFrameTimes.rbegin();
++        auto relative=mlRelativeFramePoses.rbegin();
++        auto reference=mlpReferences.rbegin();
++        for(auto stored=baby->window.rbegin();stored!=baby->window.rend();++stored) {
++            Frame& optimized=*(*stored)->frame;
++            while(time!=mlFrameTimes.rend() && *time>optimized.mTimeStamp+1e-7) {
++                ++time;++relative;++reference;
++            }
++            if(time==mlFrameTimes.rend())break;
++            if(!(*stored)->normal && std::abs(*time-optimized.mTimeStamp)<1e-7) {
++                *relative=optimized.GetPose()*mpLastKeyFrame->GetPoseInverse();
++                *reference=mpLastKeyFrame;
++            }
++        }
++    };
++
+ 
+     if(mState==NOT_INITIALIZED)
+     {
+@@ -3211,6 +3277,8 @@
+                         // however far the IMU has drifted). Success replaces
+                         // the frame's pose+matches; TrackLocalMap confirms it.
+                         if(bOK && mbCoasting) {
++                            if(baby && baby->active)
++                                babyRelatchSnapshot.reset(new TrackingStateRollback(mCurrentFrame));
+                             const bool diagnosticRelatch=LocalMatchDiagnosticsEnabled();
+                             const Sophus::SE3f poseBeforeRelatch=mCurrentFrame.GetPose();
+                             int associationsBeforeRelatch[2]={0,0};
+@@ -3397,6 +3465,64 @@
+                 bOK = TrackLocalMap();
+         }
+ 
++        // Baby tracks are observations only during normal SLAM. The private
++        // VI graph is evaluated solely after the ordinary local-map path fails.
++        if(baby && !mbOnlyTracking && pCurrentMap->isImuInitialized() && mbCoastArmed) {
++            if(!bOK && babyRelatchSnapshot)babyRelatchSnapshot->restore(mCurrentFrame);
++            if(bOK) {
++                if(baby->active) {
++                    const BabySolveResult closure=baby->solve(mCurrentFrame,true);
++                    if(closure.accepted)refreshBabyHistory();
++                    baby->report(mCurrentFrame,"recovered",mnMatchesInliers,
++                                 closure.accepted?"retained_window_refined":closure.reason.c_str());
++                }
++                baby->active=false;baby->exhausted=false;baby->acceptedStreak=0;
++                baby->promotionPending=false;
++            } else if(mCurrentFrame.isSet() && !baby->exhausted) {
++                if(!baby->active) {
++                    baby->active=true;baby->enteredAt=mCurrentFrame.mTimeStamp;
++                    baby->acceptedStreak=0;
++                    baby->report(mCurrentFrame,"enter",mnMatchesInliers,"ordinary_tracking_failed");
++                }
++                // Actual visual support may renew the normal five-second
++                // grace, but this prototype never runs a blind/unbounded SOS.
++                if(mCurrentFrame.mTimeStamp-baby->enteredAt>10.0) {
++                    baby->report(mCurrentFrame,"expired",0,"ten_second_episode_limit");
++                    baby->exhausted=true;baby->promotionPending=false;
++                } else {
++                    baby->lastSolve=baby->solve(mCurrentFrame);
++                    babyAccepted=baby->lastSolve.accepted;
++                    const int supported=baby->lastSolve.currentInliers[0]+baby->lastSolve.currentInliers[1];
++                    baby->report(mCurrentFrame,babyAccepted?"accepted":"rejected",supported,
++                                 baby->lastSolve.reason.c_str());
++                    if(babyAccepted) {
++                        ++baby->acceptedStreak;
++                        mState=RECENTLY_LOST;
++                        mTimeStampLost=mCurrentFrame.mTimeStamp;
++                        mbCoasting=true;
++                        if(!mpCoastAnchorKF)mpCoastAnchorKF=mpLastKeyFrame;
++                        // Rejected map bindings must not hitchhike into a new
++                        // anchor. The temporary solver owns no MapPoints.
++                        std::fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),nullptr);
++                        std::fill(mCurrentFrame.mvbOutlier.begin(),mCurrentFrame.mvbOutlier.end(),false);
++                        refreshBabyHistory();
++                        int matureTemporary=0;
++                        for(const auto& landmark:baby->lastSolve.landmarks)
++                            if(landmark.verifiedViews>=3 && landmark.parallaxDegrees>=1.0 &&
++                               landmark.currentFeatureIndex>=0 && landmark.currentFeatureIndex<mCurrentFrame.N)
++                                ++matureTemporary;
++                        baby->promotionPending=matureTemporary>=50 && baby->acceptedStreak>=3 &&
++                            mCurrentFrame.mTimeStamp-baby->enteredAt>=0.15 &&
++                            mCurrentFrame.mTimeStamp-baby->lastPromotionAt>=0.5;
++                        if(baby->promotionPending)
++                            baby->report(mCurrentFrame,"promotion_pending",matureTemporary,"three_view_geometry");
++                    } else {
++                        baby->acceptedStreak=0;baby->promotionPending=false;
++                    }
++                }
++            }
++        }
++
+         if(bOK)
+         {
+             mState = OK;
+@@ -3565,7 +3691,10 @@
+ #ifdef REGISTER_TIMES
+             std::chrono::steady_clock::time_point time_StartNewKF = std::chrono::steady_clock::now();
+ #endif
+-            bool bNeedKF = NeedNewKeyFrame();
++            const bool babyBootstrap=baby && babyAccepted && baby->promotionPending &&
++                !mpLocalMapper->isStopped() && !mpLocalMapper->stopRequested() &&
++                !mpLocalMapper->IsInitializing() && mpLocalMapper->KeyframesInQueue()<2;
++            bool bNeedKF = NeedNewKeyFrame() || babyBootstrap;
+ 
+             // A proven inertial map may keep gathering visual constraints
+             // during the existing RECENTLY_LOST grace interval. Pure IMU
+@@ -3578,7 +3707,7 @@
+                     mState==RECENTLY_LOST && pCurrentMap->isImuInitialized() &&
+                     coastAge>=0.0 && coastAge<=time_recently_lost &&
+                     (mSensor==System::IMU_MONOCULAR || mSensor==System::IMU_STEREO || mSensor==System::IMU_RGBD);
+-            if(bNeedKF && ((bOK && !mbCoasting) || bCoastMapping))
++            if(bNeedKF && ((bOK && !mbCoasting) || bCoastMapping || babyBootstrap))
+             {
+                 if(bCoastMapping)
+                 {
+@@ -3643,6 +3772,7 @@
+         if(!mCurrentFrame.mpReferenceKF)
+             mCurrentFrame.mpReferenceKF = mpReferenceKF;
+ 
++        if(baby)baby->remember(mCurrentFrame,bOK,babyAccepted);
+         mLastFrame = Frame(mCurrentFrame);
+     }
+ 
+@@ -3650,6 +3780,7 @@
+ 
+ 
+     StoreFramePoseHistory();
++    if(baby && mState==OK)baby->remember(mCurrentFrame,true,false);
+ 
+ 
+ #ifdef REGISTER_LOOP
+@@ -4556,6 +4687,31 @@
+     const Eigen::Vector3f Vw_imu_pred = mCurrentFrame.GetVelocity();
+     const IMU::Bias bias_imu_pred = mCurrentFrame.mImuBias;
+ 
++    // babyassist: when the map is thin but tracking still holds, one Baby window solve on a copy of
++    // this frame (ordinary-tracked window frames fixed) supplies weak temporaries for the pose solve.
++    // aux1 = local-map matches before optimisation; mnMatchesInliers = previous frame's inliers.
++    int assistTemporaries = 0; std::string assistSolve;
++    LamariaBabyTracker* assistBaby = (lamaria_baby_assist::Enabled() && LamariaBabyEnabled()) ? &LamariaBabyState(this) : nullptr;
++    if(assistBaby && lamaria_baby_assist::ShouldAssist(mpAtlas->isImuInitialized(), mState==OK && !mbCoasting && !assistBaby->active,
++                                                        mnMatchesInliers, aux1, mCurrentFrame.N, lamaria_knot::InKnot())) {   // knotregime: forced on in a knot
++        Frame probe(mCurrentFrame);                       // the solve must not touch the ordinary state
++        const BabySolveResult assist = assistBaby->solve(probe, false);
++        assistSolve = assist.reason;
++        if(assist.accepted) {
++            std::vector<lamaria_baby_assist::Temporary> temporaries;
++            for(const auto& landmark : assist.landmarks) {
++                if(landmark.verifiedViews < lamaria_baby_assist::kMinViews || landmark.parallaxDegrees < lamaria_baby_assist::kMinParallaxDeg) continue;
++                const int index = landmark.currentFeatureIndex;
++                if(index < 0 || index >= mCurrentFrame.N || mCurrentFrame.mvpMapPoints[index] || !landmark.worldPoint.allFinite()) continue;
++                lamaria_baby_assist::Temporary temporary; temporary.world = landmark.worldPoint.cast<float>(); temporary.featureIndex = index;
++                temporaries.push_back(temporary);
++                if(static_cast<int>(temporaries.size()) >= lamaria_baby_assist::kMaxTemporaries) break;
++            }
++            lamaria_baby_assist::Set(temporaries);
++            assistTemporaries = static_cast<int>(temporaries.size());
++        }
++    }
++
+     const char* diagnosticOptimizer="visual";
+     int inliers;
+     if (!mpAtlas->isImuInitialized())
+@@ -4607,6 +4763,15 @@
+             }
+         }
+     }
++    {   // babyassist: always clear the temporaries; report when the monitor fired
++        const lamaria_baby_assist::Report assistReport = lamaria_baby_assist::Take();
++        if(!assistSolve.empty())
++            std::cout << std::setprecision(12) << "[BABY_ASSIST] t=" << mCurrentFrame.mTimeStamp
++                      << " prev_inliers=" << mnMatchesInliers << " matches=" << aux1 << " keypoints=" << mCurrentFrame.N
++                      << " solve=" << assistSolve << " temporaries=" << assistTemporaries << " used=" << assistReport.used
++                      << " chi2_temporaries=" << assistReport.temporaryChi2 << " chi2_map=" << assistReport.mapChi2
++                      << " inliers_after=" << inliers << " optimizer=" << diagnosticOptimizer << std::endl;
++    }
+ 
+     aux1 = 0, aux2 = 0;
+     for(int i=0; i<mCurrentFrame.N; i++)
+@@ -4863,6 +5028,17 @@
+ 
+     // Local Mapping accept keyframes?
+     bool bLocalMappingIdle = mpLocalMapper->AcceptKeyFrames();
++    {   // knotregime (K2): inside a knot, a keyframe at every sweep reversal and every 10 deg of rotation
++        std::string knotReason;
++        if(mnMatchesInliers > 15 && (bLocalMappingIdle || mpLocalMapper->KeyframesInQueue() < 3) &&
++           lamaria_knot::KeyframeDue(mCurrentFrame.mTimeStamp, knotReason)) {
++            static long knotKfLogged = 0;
++            if(++knotKfLogged % 20 == 1)
++                std::cout << std::setprecision(12) << "[KNOT_KF] t=" << mCurrentFrame.mTimeStamp << " reason=" << knotReason
++                          << " inliers=" << mnMatchesInliers << " deg_since_kf=" << lamaria_knot::RotationSinceKeyframeDeg() << std::endl;
++            return true;
++        }
++    }
+ 
+     // Check how many "close" points are being tracked and how many could be potentially created.
+     int nNonTrackedClose = 0;
+@@ -5099,6 +5275,88 @@
+     }
+ 
+ 
++    // SOS-only bootstrap: temporary multiview geometry may seed the next
++    // ordinary keyframe without starting a disconnected Atlas map. The IMU
++    // predecessor and preintegration are created by the unchanged path above.
++    // Frame-only observations are deliberately not forged as KF observations.
++    if(LamariaBabyEnabled()) {
++        LamariaBabyTracker& baby=LamariaBabyState(this);
++        if(baby.active && baby.promotionPending && baby.lastSolve.accepted) {
++            int promoted=0;
++            for(const auto& landmark:baby.lastSolve.landmarks) {
++                const int index=landmark.currentFeatureIndex;
++                if(landmark.verifiedViews<3 || landmark.parallaxDegrees<1.0 ||
++                   index<0 || index>=mCurrentFrame.N || pKF->GetMapPoint(index) ||
++                   mCurrentFrame.mvpMapPoints[index] || !landmark.worldPoint.allFinite())continue;
++                const int camera=mCurrentFrame.Nleft>=0 && index>=mCurrentFrame.Nleft?1:0;
++                const int localIndex=camera?index-mCurrentFrame.Nleft:index;
++                const auto& key=camera?mCurrentFrame.mvKeysRight[localIndex]:mCurrentFrame.mvKeys[localIndex];
++                const Sophus::SE3f pose=camera?mCurrentFrame.GetRelativePoseTrl()*mCurrentFrame.GetPose():mCurrentFrame.GetPose();
++                const Eigen::Vector3f world=landmark.worldPoint.cast<float>();
++                const Eigen::Vector3f pc=pose*world;
++                GeometricCamera* model=camera?mCurrentFrame.mpCamera2:mCurrentFrame.mpCamera;
++                if(!model || pc.z()<=0)continue;
++                const Eigen::Vector2f pixel=model->project(pc);
++                const double inverseVariance=mCurrentFrame.mvInvLevelSigma2[key.octave];
++                const Eigen::Vector2d measured(key.pt.x,key.pt.y);
++                if(!pixel.allFinite() || (pixel.cast<double>()-measured).squaredNorm()*inverseVariance/
++                    std::max(1e-9,static_cast<double>(model->uncertainty2(measured)))>5.991)continue;
++                MapPoint* point=new MapPoint(world,pKF,mpAtlas->GetCurrentMap());
++                point->AddObservation(pKF,index);
++                pKF->AddMapPoint(point,index);
++                mCurrentFrame.mvpMapPoints[index]=point;
++                mCurrentFrame.mvbOutlier[index]=false;
++                point->ComputeDistinctiveDescriptors();point->UpdateNormalAndDepth();
++                mpAtlas->AddMapPoint(point);
++                ++promoted;
++            }
++            baby.lastPromotionAt=mCurrentFrame.mTimeStamp;
++            baby.promotionPending=false;
++            baby.report(mCurrentFrame,"promoted",promoted,"same_map_temporal_keyframe");
++        }
++        // knotregime (K3): while ordinary tracking is OK inside a knot, Baby's short tracks across the
++        // sweeps supply verified landmarks for this keyframe (same admission rule as the SOS bootstrap).
++        if(lamaria_knot::InKnot() && !baby.active && mState==OK) {
++            Frame probe(mCurrentFrame);                       // the solve must not touch the ordinary state
++            const BabySolveResult knotSolve=baby.solve(probe,false);
++            int knotPromoted=0;
++            if(knotSolve.accepted) {
++                for(const auto& landmark:knotSolve.landmarks) {
++                    const int index=landmark.currentFeatureIndex;
++                    if(landmark.verifiedViews<3 || landmark.parallaxDegrees<1.0 ||
++                       index<0 || index>=mCurrentFrame.N || pKF->GetMapPoint(index) ||
++                       mCurrentFrame.mvpMapPoints[index] || !landmark.worldPoint.allFinite())continue;
++                    const int camera=mCurrentFrame.Nleft>=0 && index>=mCurrentFrame.Nleft?1:0;
++                    const int localIndex=camera?index-mCurrentFrame.Nleft:index;
++                    const auto& key=camera?mCurrentFrame.mvKeysRight[localIndex]:mCurrentFrame.mvKeys[localIndex];
++                    const Sophus::SE3f pose=camera?mCurrentFrame.GetRelativePoseTrl()*mCurrentFrame.GetPose():mCurrentFrame.GetPose();
++                    const Eigen::Vector3f world=landmark.worldPoint.cast<float>();
++                    const Eigen::Vector3f pc=pose*world;
++                    GeometricCamera* model=camera?mCurrentFrame.mpCamera2:mCurrentFrame.mpCamera;
++                    if(!model || pc.z()<=0)continue;
++                    const Eigen::Vector2f pixel=model->project(pc);
++                    const double inverseVariance=mCurrentFrame.mvInvLevelSigma2[key.octave];
++                    const Eigen::Vector2d measured(key.pt.x,key.pt.y);
++                    if(!pixel.allFinite() || (pixel.cast<double>()-measured).squaredNorm()*inverseVariance/
++                        std::max(1e-9,static_cast<double>(model->uncertainty2(measured)))>5.991)continue;
++                    MapPoint* point=new MapPoint(world,pKF,mpAtlas->GetCurrentMap());
++                    point->AddObservation(pKF,index);
++                    pKF->AddMapPoint(point,index);
++                    mCurrentFrame.mvpMapPoints[index]=point;
++                    mCurrentFrame.mvbOutlier[index]=false;
++                    point->ComputeDistinctiveDescriptors();point->UpdateNormalAndDepth();
++                    mpAtlas->AddMapPoint(point);
++                    ++knotPromoted;
++                }
++            }
++            lamaria_knot::CountPromoted(knotPromoted);
++            static long knotPromoteLogged=0;
++            if(++knotPromoteLogged%20==1)
++                std::cout << std::setprecision(12) << "[KNOT_PROMOTE] t=" << mCurrentFrame.mTimeStamp << " solve=" << knotSolve.reason
++                          << " landmarks=" << knotSolve.landmarks.size() << " promoted=" << knotPromoted << std::endl;
++        }
++    }
++
+     if(mbUseLines)
+         // publish AFTER the post-Track() line block finalises this frame's
+         // bindings (triangulation, validation, re-acquisition): the snapshot
+@@ -5113,6 +5371,7 @@
+ 
+     mnLastKeyFrameId = mCurrentFrame.mnId;
+     mpLastKeyFrame = pKF;
++    lamaria_knot::OnKeyframe(mCurrentFrame.mTimeStamp);   // knotregime
+ }
+ 
+ void Tracking::SearchLocalPoints()
+--- a/src/Frame.cc
++++ b/src/Frame.cc
+@@ -177,6 +177,7 @@
+ #endif
+ 
+     N = mvKeys.size();
++    mpMutexImu = new std::mutex();   // robust-frame (2026-10-04): allocate before the zero-keypoint early return
+     if(mvKeys.empty())
+         return;
+ 
+@@ -230,7 +231,7 @@
+         mVw.setZero();
+     }
+ 
+-    mpMutexImu = new std::mutex();
++    // robust-frame (2026-10-04): mpMutexImu already allocated before the early return above
+ 
+     //Set no stereo fisheye information
+     Nleft = -1;
+@@ -276,6 +277,7 @@
+ 
+     N = mvKeys.size();
+ 
++    mpMutexImu = new std::mutex();   // robust-frame (2026-10-04): allocate before the zero-keypoint early return
+     if(mvKeys.empty())
+         return;
+ 
+@@ -318,7 +320,7 @@
+         mVw.setZero();
+     }
+ 
+-    mpMutexImu = new std::mutex();
++    // robust-frame (2026-10-04): mpMutexImu already allocated before the early return above
+ 
+     //Set no stereo fisheye information
+     Nleft = -1;
+@@ -364,6 +366,7 @@
+ 
+ 
+     N = mvKeys.size();
++    mpMutexImu = new std::mutex();   // robust-frame (2026-10-04): allocate before the zero-keypoint early return
+     if(mvKeys.empty())
+         return;
+ 
+@@ -425,7 +428,7 @@
+         mVw.setZero();
+     }
+ 
+-    mpMutexImu = new std::mutex();
++    // robust-frame (2026-10-04): mpMutexImu already allocated before the early return above
+ }
+ 
+ 
+@@ -1238,6 +1241,7 @@
+     Nright = mvKeysRight.size();
+     N = Nleft + Nright;
+ 
++    mpMutexImu = new std::mutex();   // robust-frame (2026-10-04): allocate before the zero-keypoint early return
+     if(N == 0)
+         return;
+ 
+@@ -1289,7 +1293,7 @@
+ 
+     AssignFeaturesToGrid();
+ 
+-    mpMutexImu = new std::mutex();
++    // robust-frame (2026-10-04): mpMutexImu already allocated before the early return above
+ 
+     UndistortKeyPoints();
+ 
+--- a/src/Optimizer.cc
++++ b/src/Optimizer.cc
+@@ -42,6 +42,8 @@
+ #include "G2oFullCalibration.h"
+ #include "Tracking.h"
+ #include "Converter.h"
++#include "LamariaBabyAssist.h"   // babyassist (2026-10-04)
++#include "LamariaKnot.h"   // knotregime (2026-10-05)
+ 
+ #include<mutex>
+ 
+@@ -2454,6 +2456,12 @@
+         maxOpt=25;
+         opt_it=4;
+     }
++    {   // knotregime (K4): window measured in time; whole knot once after it ends
++        bool knotClosure = false;
++        const int knotWindow = lamaria_knot::TemporalWindowKeyframes(pKF, maxOpt, &knotClosure);
++        if(knotWindow > maxOpt) { maxOpt = knotWindow; opt_it = 4; }
++        if(knotClosure) std::cout << std::setprecision(12) << "[KNOT_BA] t=" << pKF->mTimeStamp << " closure keyframes=" << knotWindow << std::endl;
++    }
+     const int Nd = std::min((int)pCurrentMap->KeyFramesInMap()-2,maxOpt);
+     const unsigned long maxKFid = pKF->mnId;
+ 
+@@ -5666,6 +5674,25 @@
+ 
+     nInitialCorrespondences = nInitialMonoCorrespondences + nInitialStereoCorrespondences;
+ 
++    // babyassist: weak temporaries (verified Baby landmarks) as extra pose-only edges; map edges keep
++    // full weight. Information = keypoint information x Weight(); Huber like the map edges.
++    std::vector<EdgeMonoOnlyPose*> assistEdges;
++    for(size_t ai = 0; ai < lamaria_baby_assist::Pending().size(); ++ai) {
++        const lamaria_baby_assist::Temporary& temporary = lamaria_baby_assist::Pending()[ai];
++        const int i = temporary.featureIndex;
++        if(i < 0 || i >= pFrame->N) continue;
++        const bool right = bRight && i >= Nleft;
++        const cv::KeyPoint& kpUn = right ? pFrame->mvKeysRight[i - Nleft] : (bRight ? pFrame->mvKeys[i] : pFrame->mvKeysUn[i]);
++        Eigen::Matrix<double,2,1> obs; obs << kpUn.pt.x, kpUn.pt.y;
++        EdgeMonoOnlyPose* e = new EdgeMonoOnlyPose(temporary.world, right ? 1 : 0);
++        e->setVertex(0, VP); e->setMeasurement(obs);
++        const float unc2 = pFrame->mpCamera->uncertainty2(obs);
++        const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave] / unc2;
++        e->setInformation(Eigen::Matrix2d::Identity() * invSigma2 * lamaria_baby_assist::Weight());
++        g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber; e->setRobustKernel(rk); rk->setDelta(thHuberMono);
++        optimizer.addEdge(e); assistEdges.push_back(e);
++    }
++
+     KeyFrame* pKF = pFrame->mpLastKeyFrame;
+     VertexPose* VPk = new VertexPose(pKF);
+     VPk->setId(4);
+@@ -5882,6 +5909,18 @@
+             tot_out++;
+     }
+ 
++    if(!assistEdges.empty()) {   // babyassist: report and carry inlier temporaries into the prior
++        double temporaryChi2 = 0.0, mapChi2 = 0.0; int used = 0;
++        for(size_t ai = 0; ai < assistEdges.size(); ++ai) {
++            EdgeMonoOnlyPose* e = assistEdges[ai]; e->computeError(); const double c = e->chi2();
++            temporaryChi2 += c; ++used;
++            if(c < thHuberMono*thHuberMono) H.block<6,6>(0,0) += e->GetHessian();
++        }
++        for(size_t mi = 0; mi < vpEdgesMono.size(); ++mi)
++            if(!pFrame->mvbOutlier[vnIndexEdgeMono[mi]]) { vpEdgesMono[mi]->computeError(); mapChi2 += vpEdgesMono[mi]->chi2(); }
++        lamaria_baby_assist::Record(used, temporaryChi2, mapChi2);
++    }
++
+     for(size_t i=0, iend=vpEdgesStereo.size(); i<iend; i++)
+     {
+         EdgeStereoOnlyPose* e = vpEdgesStereo[i];
+@@ -6147,6 +6186,25 @@
+     if(bLinesOnly)
+         nInitialCorrespondences += nLineEdges;   // matched by nInliersLine below
+ 
++    // babyassist: weak temporaries (verified Baby landmarks) as extra pose-only edges; map edges keep
++    // full weight. Information = keypoint information x Weight(); Huber like the map edges.
++    std::vector<EdgeMonoOnlyPose*> assistEdges;
++    for(size_t ai = 0; ai < lamaria_baby_assist::Pending().size(); ++ai) {
++        const lamaria_baby_assist::Temporary& temporary = lamaria_baby_assist::Pending()[ai];
++        const int i = temporary.featureIndex;
++        if(i < 0 || i >= pFrame->N) continue;
++        const bool right = bRight && i >= Nleft;
++        const cv::KeyPoint& kpUn = right ? pFrame->mvKeysRight[i - Nleft] : (bRight ? pFrame->mvKeys[i] : pFrame->mvKeysUn[i]);
++        Eigen::Matrix<double,2,1> obs; obs << kpUn.pt.x, kpUn.pt.y;
++        EdgeMonoOnlyPose* e = new EdgeMonoOnlyPose(temporary.world, right ? 1 : 0);
++        e->setVertex(0, VP); e->setMeasurement(obs);
++        const float unc2 = pFrame->mpCamera->uncertainty2(obs);
++        const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave] / unc2;
++        e->setInformation(Eigen::Matrix2d::Identity() * invSigma2 * lamaria_baby_assist::Weight());
++        g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber; e->setRobustKernel(rk); rk->setDelta(thHuberMono);
++        optimizer.addEdge(e); assistEdges.push_back(e);
++    }
++
+     // Set Previous Frame Vertex
+     Frame* pFp = pFrame->mpPrevFrame;
+ 
+@@ -6467,6 +6525,18 @@
+             tot_out++;
+     }
+ 
++    if(!assistEdges.empty()) {   // babyassist: report and carry inlier temporaries into the prior
++        double temporaryChi2 = 0.0, mapChi2 = 0.0; int used = 0;
++        for(size_t ai = 0; ai < assistEdges.size(); ++ai) {
++            EdgeMonoOnlyPose* e = assistEdges[ai]; e->computeError(); const double c = e->chi2();
++            temporaryChi2 += c; ++used;
++            if(c < thHuberMono*thHuberMono) H.block<6,6>(15,15) += e->GetHessian();
++        }
++        for(size_t mi = 0; mi < vpEdgesMono.size(); ++mi)
++            if(!pFrame->mvbOutlier[vnIndexEdgeMono[mi]]) { vpEdgesMono[mi]->computeError(); mapChi2 += vpEdgesMono[mi]->chi2(); }
++        lamaria_baby_assist::Record(used, temporaryChi2, mapChi2);
++    }
++
+     for(size_t i=0, iend=vpEdgesStereo.size(); i<iend; i++)
+     {
+         EdgeStereoOnlyPose* e = vpEdgesStereo[i];
