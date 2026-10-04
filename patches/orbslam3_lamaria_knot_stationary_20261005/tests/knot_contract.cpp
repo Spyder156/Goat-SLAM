@@ -21,11 +21,13 @@ int main() {
     std::string reason;
     // Keyframe rule: rotation accumulates since OnKeyframe; 10 deg reached after 0.1745 rad / 1.5 = 0.116 s
     OnKeyframe(t); t += dt;
-    Update(t, 1.5, 0.5, dt); t += dt;                       // 0.075 rad
+    Update(t, 1.5, 0.5, dt); t += dt;                       // 0.075 rad = 4.3 deg
     const bool tooEarly = KeyframeDue(t, reason);
-    Update(t, 1.5, 0.5, dt); t += dt; Update(t, 1.5, 0.5, dt); t += dt;   // 0.225 rad = 12.9 deg
-    const bool due = KeyframeDue(t, reason);
-    check(!tooEarly && due && reason == "rotation", "knot keyframe after 10 deg of integrated rotation", RotationSinceKeyframeDeg());
+    Update(t, 1.5, 0.5, dt); t += dt; Update(t, 1.5, 0.5, dt); t += dt;   // 0.225 rad = 12.9 deg, still under 15
+    const bool stillEarly = KeyframeDue(t + 0.1, reason);
+    Update(t, 1.5, 0.5, dt); t += dt;                       // 0.300 rad = 17.2 deg
+    const bool due = KeyframeDue(t + 0.2, reason);
+    check(!tooEarly && !stillEarly && due && reason == "rotation", "knot keyframe after 15 deg of integrated rotation", RotationSinceKeyframeDeg());
     OnKeyframe(t);
     check(!KeyframeDue(t + 0.2, reason) && RotationSinceKeyframeDeg() == 0.0, "keyframe bookkeeping resets the rotation", RotationSinceKeyframeDeg());
     // Reversal: fast phase then a dip under 0.3 rad/s

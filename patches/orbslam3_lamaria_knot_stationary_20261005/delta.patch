@@ -226,7 +226,16 @@
  
  
  #ifdef REGISTER_LOOP
-@@ -4556,6 +4687,31 @@
+@@ -4475,6 +4606,8 @@
+             if(current.mvpMapPoints[newOffset+k]) occupied.insert(current.mvpMapPoints[newOffset+k]);
+         const cv::Mat oldDescriptors=previous.mDescriptors.rowRange(oldOffset,oldOffset+oldCount);
+         const cv::Mat newDescriptors=current.mDescriptors.rowRange(newOffset,newOffset+newCount);
++        if(oldDescriptors.empty() || newDescriptors.empty() || !oldDescriptors.isContinuous() || !newDescriptors.isContinuous() ||
++           oldDescriptors.rows!=oldCount || newDescriptors.rows!=newCount) continue;   // knotregime: guard (SIGSEGV in knnMatch on one Long run)
+         cv::BFMatcher matcher(cv::NORM_HAMMING);
+         std::vector<std::vector<cv::DMatch>> forward;
+         std::vector<cv::DMatch> backward;
+@@ -4556,6 +4689,31 @@
      const Eigen::Vector3f Vw_imu_pred = mCurrentFrame.GetVelocity();
      const IMU::Bias bias_imu_pred = mCurrentFrame.mImuBias;
  
@@ -258,7 +267,7 @@
      const char* diagnosticOptimizer="visual";
      int inliers;
      if (!mpAtlas->isImuInitialized())
-@@ -4607,6 +4763,15 @@
+@@ -4607,6 +4765,15 @@
              }
          }
      }
@@ -274,7 +283,7 @@
  
      aux1 = 0, aux2 = 0;
      for(int i=0; i<mCurrentFrame.N; i++)
-@@ -4863,6 +5028,17 @@
+@@ -4863,6 +5030,17 @@
  
      // Local Mapping accept keyframes?
      bool bLocalMappingIdle = mpLocalMapper->AcceptKeyFrames();
@@ -292,7 +301,7 @@
  
      // Check how many "close" points are being tracked and how many could be potentially created.
      int nNonTrackedClose = 0;
-@@ -5099,6 +5275,88 @@
+@@ -5099,6 +5277,97 @@
      }
  
  
@@ -342,9 +351,18 @@
 +            const BabySolveResult knotSolve=baby.solve(probe,false);
 +            int knotPromoted=0;
 +            if(knotSolve.accepted) {
-+                for(const auto& landmark:knotSolve.landmarks) {
++                // best-verified landmarks first; hard caps per keyframe and per knot (K3 caps)
++                std::vector<const BabyLandmark*> ranked;
++                for(const auto& landmark:knotSolve.landmarks) ranked.push_back(&landmark);
++                std::sort(ranked.begin(),ranked.end(),[](const BabyLandmark* a,const BabyLandmark* b) {
++                    if(a->verifiedViews!=b->verifiedViews)return a->verifiedViews>b->verifiedViews;
++                    return a->parallaxDegrees>b->parallaxDegrees;});
++                const int budget=std::min(lamaria_knot::kMaxPromotionsPerKeyframe,lamaria_knot::PromotionBudget());
++                for(const BabyLandmark* ranked_landmark:ranked) {
++                    if(knotPromoted>=budget)break;
++                    const auto& landmark=*ranked_landmark;
 +                    const int index=landmark.currentFeatureIndex;
-+                    if(landmark.verifiedViews<3 || landmark.parallaxDegrees<1.0 ||
++                    if(landmark.verifiedViews<lamaria_knot::kMinPromotionViews || landmark.parallaxDegrees<1.0 ||
 +                       index<0 || index>=mCurrentFrame.N || pKF->GetMapPoint(index) ||
 +                       mCurrentFrame.mvpMapPoints[index] || !landmark.worldPoint.allFinite())continue;
 +                    const int camera=mCurrentFrame.Nleft>=0 && index>=mCurrentFrame.Nleft?1:0;
@@ -381,7 +399,7 @@
      if(mbUseLines)
          // publish AFTER the post-Track() line block finalises this frame's
          // bindings (triangulation, validation, re-acquisition): the snapshot
-@@ -5113,6 +5371,7 @@
+@@ -5113,6 +5382,7 @@
  
      mnLastKeyFrameId = mCurrentFrame.mnId;
      mpLastKeyFrame = pKF;

@@ -1,6 +1,6 @@
 --- a/src/Tracking.cc
 +++ b/src/Tracking.cc
-@@ -27,6 +27,76 @@
+@@ -27,6 +27,77 @@
  #include "G2oTypes.h"
  #include "Optimizer.h"
  #include "TrackingStateRollback.h"
@@ -24,6 +24,7 @@
 +    return enabled;
 +}
 +const double kSequentialTimeoutSeconds = 60.0;
++const double kSequentialIdleSeconds = 5.0;   // after the queue is empty, wait for idleness at most this long
 +bool g_sequentialPending = false;
 +void SequentialMarkPending() { if(SequentialEnabled()) g_sequentialPending = true; }
 +// Called at the start of Track(), BEFORE the frame takes the map-update mutex: the mapper needs that
@@ -36,8 +37,8 @@
 +    bool timedOut = false;
 +    while(true) {
 +        if(mapper->isStopped() || mapper->stopRequested() || mapper->isFinished() || mapper->IsInitializing()) break;   // init runs its own keyframe loop
-+        if(mapper->KeyframesInQueue() == 0 && mapper->AcceptKeyFrames()) break;
 +        const double waited = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
++        if(mapper->KeyframesInQueue() == 0 && (mapper->AcceptKeyFrames() || waited > kSequentialIdleSeconds)) break;
 +        if(waited > kSequentialTimeoutSeconds) { timedOut = true; break; }
 +        usleep(500);
 +    }
@@ -77,7 +78,7 @@
  #include "Pinhole.h"
  #include "KannalaBrandt8.h"
  #include "MLPnPsolver.h"
-@@ -646,6 +716,7 @@
+@@ -646,6 +717,7 @@
  
  Tracking::~Tracking()
  {
@@ -85,7 +86,7 @@
      //f_track_stats.close();
  
  }
-@@ -2715,6 +2786,7 @@
+@@ -2715,6 +2787,7 @@
          mpPendingLineKF->SetLineObservations(mCurrentFrame.mvLines,
                                               mCurrentFrame.mvpMapLines);
          mpLocalMapper->InsertKeyFrame(mpPendingLineKF);
@@ -93,7 +94,7 @@
          mpPendingLineKF = nullptr;
      }
  
-@@ -2937,6 +3009,7 @@
+@@ -2937,6 +3010,7 @@
          Eigen::Matrix3f Rwb2 = IMU::NormalizeRotation(Rwb1 * mpImuPreintegratedFromLastKF->GetDeltaRotation(mpLastKeyFrame->GetImuBias()));
          Eigen::Vector3f twb2 = twb1 + Vwb1*t12 + 0.5f*t12*t12*Gz+ Rwb1*mpImuPreintegratedFromLastKF->GetDeltaPosition(mpLastKeyFrame->GetImuBias());
          Eigen::Vector3f Vwb2 = Vwb1 + t12*Gz + Rwb1 * mpImuPreintegratedFromLastKF->GetDeltaVelocity(mpLastKeyFrame->GetImuBias());
@@ -101,7 +102,7 @@
          mCurrentFrame.SetImuPoseVelocity(Rwb2,twb2,Vwb2);
  
          mCurrentFrame.mImuBias = mpLastKeyFrame->GetImuBias();
-@@ -2954,6 +3027,7 @@
+@@ -2954,6 +3028,7 @@
          Eigen::Matrix3f Rwb2 = IMU::NormalizeRotation(Rwb1 * mCurrentFrame.mpImuPreintegratedFrame->GetDeltaRotation(mLastFrame.mImuBias));
          Eigen::Vector3f twb2 = twb1 + Vwb1*t12 + 0.5f*t12*t12*Gz+ Rwb1 * mCurrentFrame.mpImuPreintegratedFrame->GetDeltaPosition(mLastFrame.mImuBias);
          Eigen::Vector3f Vwb2 = Vwb1 + t12*Gz + Rwb1 * mCurrentFrame.mpImuPreintegratedFrame->GetDeltaVelocity(mLastFrame.mImuBias);
@@ -109,7 +110,7 @@
  
          mCurrentFrame.SetImuPoseVelocity(Rwb2,twb2,Vwb2);
  
-@@ -2990,6 +3064,9 @@
+@@ -2990,6 +3065,9 @@
  
  void Tracking::Track()
  {
@@ -119,7 +120,7 @@
      if(mnMapDiagFrames > 0){
          mnMapDiagFrames--;
          std::cout << "[MAP-DIAG] frame " << mCurrentFrame.mnId
-@@ -3089,6 +3166,7 @@
+@@ -3089,6 +3167,7 @@
      mbCreatedMap = false;
  
      // Get Map Mutex -> Map cannot be changed
@@ -127,7 +128,7 @@
      unique_lock<mutex> lock(pCurrentMap->mMutexMapUpdate);
  
      mbMapUpdated = false;
-@@ -3101,6 +3179,28 @@
+@@ -3101,6 +3180,28 @@
          mbMapUpdated = true;
      }
  
@@ -156,7 +157,7 @@
  
      if(mState==NOT_INITIALIZED)
      {
-@@ -3211,6 +3311,8 @@
+@@ -3211,6 +3312,8 @@
                          // however far the IMU has drifted). Success replaces
                          // the frame's pose+matches; TrackLocalMap confirms it.
                          if(bOK && mbCoasting) {
@@ -165,7 +166,7 @@
                              const bool diagnosticRelatch=LocalMatchDiagnosticsEnabled();
                              const Sophus::SE3f poseBeforeRelatch=mCurrentFrame.GetPose();
                              int associationsBeforeRelatch[2]={0,0};
-@@ -3397,6 +3499,64 @@
+@@ -3397,6 +3500,64 @@
                  bOK = TrackLocalMap();
          }
  
@@ -230,7 +231,7 @@
          if(bOK)
          {
              mState = OK;
-@@ -3565,7 +3725,10 @@
+@@ -3565,7 +3726,10 @@
  #ifdef REGISTER_TIMES
              std::chrono::steady_clock::time_point time_StartNewKF = std::chrono::steady_clock::now();
  #endif
@@ -242,7 +243,7 @@
  
              // A proven inertial map may keep gathering visual constraints
              // during the existing RECENTLY_LOST grace interval. Pure IMU
-@@ -3578,7 +3741,7 @@
+@@ -3578,7 +3742,7 @@
                      mState==RECENTLY_LOST && pCurrentMap->isImuInitialized() &&
                      coastAge>=0.0 && coastAge<=time_recently_lost &&
                      (mSensor==System::IMU_MONOCULAR || mSensor==System::IMU_STEREO || mSensor==System::IMU_RGBD);
@@ -251,7 +252,7 @@
              {
                  if(bCoastMapping)
                  {
-@@ -3643,6 +3806,7 @@
+@@ -3643,6 +3807,7 @@
          if(!mCurrentFrame.mpReferenceKF)
              mCurrentFrame.mpReferenceKF = mpReferenceKF;
  
@@ -259,7 +260,7 @@
          mLastFrame = Frame(mCurrentFrame);
      }
  
-@@ -3650,6 +3814,7 @@
+@@ -3650,6 +3815,7 @@
  
  
      StoreFramePoseHistory();
@@ -267,7 +268,7 @@
  
  
  #ifdef REGISTER_LOOP
-@@ -3762,6 +3927,7 @@
+@@ -3762,6 +3928,7 @@
          //cout << "Active map: " << mpAtlas->GetCurrentMap()->GetId() << endl;
  
          mpLocalMapper->InsertKeyFrame(pKFini);
@@ -275,7 +276,7 @@
  
          mLastFrame = Frame(mCurrentFrame);
          mnLastKeyFrameId = mCurrentFrame.mnId;
-@@ -4008,6 +4174,7 @@
+@@ -4008,6 +4175,7 @@
  
      mpLocalMapper->InsertKeyFrame(pKFini);
      mpLocalMapper->InsertKeyFrame(pKFcur);
@@ -283,7 +284,7 @@
      mpLocalMapper->mFirstTs=pKFcur->mTimeStamp;
  
      mCurrentFrame.SetPose(pKFcur->GetPose());
-@@ -4556,6 +4723,31 @@
+@@ -4556,6 +4724,31 @@
      const Eigen::Vector3f Vw_imu_pred = mCurrentFrame.GetVelocity();
      const IMU::Bias bias_imu_pred = mCurrentFrame.mImuBias;
  
@@ -315,7 +316,7 @@
      const char* diagnosticOptimizer="visual";
      int inliers;
      if (!mpAtlas->isImuInitialized())
-@@ -4607,6 +4799,15 @@
+@@ -4607,6 +4800,15 @@
              }
          }
      }
@@ -331,7 +332,7 @@
  
      aux1 = 0, aux2 = 0;
      for(int i=0; i<mCurrentFrame.N; i++)
-@@ -5099,6 +5300,47 @@
+@@ -5099,6 +5301,47 @@
      }
  
  
@@ -379,7 +380,7 @@
      if(mbUseLines)
          // publish AFTER the post-Track() line block finalises this frame's
          // bindings (triangulation, validation, re-acquisition): the snapshot
-@@ -5108,6 +5350,7 @@
+@@ -5108,6 +5351,7 @@
          mpPendingLineKF = pKF;
      else
          mpLocalMapper->InsertKeyFrame(pKF);

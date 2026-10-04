@@ -36,12 +36,16 @@ const double kSpeed = 0.8;              // m/s, 10 s median below this
 const double kMedianSeconds = 10.0;     // detector window
 const double kEnterSeconds = 3.0;       // condition must hold this long to enter
 const double kExitSeconds = 3.0;        // and fail this long to leave
-const double kKeyframeDegrees = 10.0;   // integrated rotation between knot keyframes
+const double kKeyframeDegrees = 15.0;   // integrated rotation between knot keyframes (first run: 10 deg gave 60-110 keyframes per knot)
 const double kFastRate = 1.0;           // rad/s, a sweep is "fast" above this
 const double kSlowRate = 0.3;           // rad/s, a reversal is |omega| dipping under this after a fast phase
-const double kMinKeyframeGap = 0.1;     // s, never more than 10 knot keyframes per second
+const double kMinKeyframeGap = 0.2;     // s, never more than 5 knot keyframes per second
 const double kWindowSeconds = 5.0;      // local inertial BA window in time
 const int kMaxWindowKeyframes = 60;     // cap for the closure window
+// K3 caps (first run promoted 3,000-7,000 landmarks per knot, 77,700 per run, and the map drowned: two splits)
+const int kMinPromotionViews = 4;        // a landmark must be verified in at least this many views
+const int kMaxPromotionsPerKeyframe = 30;
+const int kMaxPromotionsPerKnot = 300;
 const bool kWideSearchDefault = false;     // K5: double the projection search radius inside knots
 const bool kDenseFeaturesDefault = true;  // K6: dense keypoint cache inside knots (needs KP_DIR_DENSE/KP_DIR1_DENSE)
 
@@ -140,6 +144,8 @@ inline void OnKeyframe(double t) {
     State& s = Get(); s.rotSinceKeyframe = 0.0; s.lastKeyframeAt = t; if(s.inKnot) ++s.knotKeyframes;
 }
 inline void CountPromoted(int n) { std::lock_guard<std::mutex> lock(Mutex()); Get().knotPromoted += n; }
+// How many more landmarks this knot may still promote (per-knot cap).
+inline int PromotionBudget() { std::lock_guard<std::mutex> lock(Mutex()); return std::max(0, kMaxPromotionsPerKnot - Get().knotPromoted); }
 
 // K4: number of temporal keyframes the local inertial BA should optimise for keyframe pKF, never fewer
 // than defaultMax. Normally the keyframes inside the last kWindowSeconds; once after a knot ends, the
