@@ -74,7 +74,7 @@
         "config": "f91e19d018459c58fe3fa101765bd3b9fcbff446cddef00e5574651af2c8cbd0",
         "source_timestamps": "669fab8b4ba4e54bd75824ab4eb34d79c30f086eebc5ef0acb7eb6191864879a",
         "supported_timestamps": "0181d14521a4103388347e5691ae433def1deea2dc3afa14b24ed3dffe5ef6e5",
-        "imu_manifest": "dd3e84d804dac96648b7d335cd9d6b9048587365b5c7ca8a3a50d0148ddbf536",
+        "imu_manifest": "1111f1f2b79d42ea48bfb3e60db1e98ac11154cf4fa9c5b12ea93f5f34905bb5",
         "baseline_result": "60a1281210f55132f6c1e2c853a94667c28d5d161c19d572459beb885db8212e"
       },
       "loop_evaluation_requires_full_sequence": true
@@ -105,7 +105,7 @@
         "config": "5c9a16293a8715d5c756f199ae240d7df8203a55c6deee273ccc7868f5e70786",
         "source_timestamps": "796b89976b02b441b34d1203196b14b2596a4b5d23e71ea4a165bc120fe0442d",
         "supported_timestamps": "796b89976b02b441b34d1203196b14b2596a4b5d23e71ea4a165bc120fe0442d",
-        "imu_manifest": "fe3d6e3c6cf3a76fc1709e4e96194e7d416486ba5ecdb7a9ed93c5a2bbd9be15",
+        "imu_manifest": "9da1956831f4e16a2510907d32ff0a89e7591c47e5555a4a6dba05a0828eaeb3",
         "baseline_result": "e66d634d9aa9e15bfaa8f2513d2d6ca7ca7274e2e4739027858b82da53a23bcd"
       },
       "loop_evaluation_requires_full_sequence": true
