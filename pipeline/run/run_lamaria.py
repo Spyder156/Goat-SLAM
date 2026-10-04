@@ -44,6 +44,8 @@ def docker_command(args, run_dir, camera_dirs, imu_csv, image_targets=()):
     # Preserve absolute symlink targets in the small EuRoC fixture. Mount just
     # the needed directories/files, not a whole writable dataset or home tree.
     readonly = {*camera_dirs, *image_targets, args.kp0.resolve(), args.kp1.resolve()}
+    dense = [d.resolve() for d in (getattr(args, 'kp0_dense', None), getattr(args, 'kp1_dense', None)) if d]
+    readonly.update(dense)
     if not imu_csv.is_relative_to(run_dir):
         readonly.add(imu_csv)
     mounts.extend((path, str(path), "ro") for path in sorted(readonly))
@@ -62,6 +64,8 @@ def docker_command(args, run_dir, camera_dirs, imu_csv, image_targets=()):
     debugger = getattr(args, "debugger", False)
     command += ["-w", "/run", "-e", "LD_LIBRARY_PATH=/build/lib:/orb/Thirdparty/DBoW2/lib:/orb/Thirdparty/g2o/lib:/usr/local/lib",
                 "-e", "KP_DIR=" + str(args.kp0.resolve()), "-e", "KP_DIR1=" + str(args.kp1.resolve()),
+                *(["-e", "KP_DIR_DENSE=" + str(args.kp0_dense.resolve()), "-e", "KP_DIR1_DENSE=" + str(args.kp1_dense.resolve()), "-e", "LAMARIA_KNOT_DENSE=1"]
+                  if getattr(args, "kp0_dense", None) and getattr(args, "kp1_dense", None) else []),
                 "-e", "LAMARIA_TEMPORAL_ASSOCIATIONS=" + str(int(getattr(args, "temporal_associations", True))),
                 "--entrypoint", "/usr/bin/gdb" if debugger else program[0], args.image]
     if debugger:
@@ -105,7 +109,7 @@ def run(args):
             # EuRoC .png entries can themselves be links to original .jpg
             # files. Their resolved parent must also be visible in Docker.
             image_targets.add(image_path.resolve(strict=True).parent)
-    for directory in (args.kp0, args.kp1):
+    for directory in (args.kp0, args.kp1, *(d for d in (getattr(args, 'kp0_dense', None), getattr(args, 'kp1_dense', None)) if d)):
         if not directory.is_dir():
             raise ValueError(f"Missing ALIKED feature directory: {directory}")
     imu_manifest = None
@@ -137,6 +141,7 @@ def run(args):
               "export_command": export_command, "coverage_command": coverage_command, "build_manifest": build,
               "source_config_sha256": sha256(args.config), "source_timestamps_sha256": sha256(args.timestamps),
               "feature_directories": [str(args.kp0.resolve()), str(args.kp1.resolve())],
+              "feature_directories_dense": [str(d.resolve()) for d in (getattr(args, "kp0_dense", None), getattr(args, "kp1_dense", None)) if d],
               "visualization_skipped": skip_viz,
               "match_diagnostics": getattr(args, "match_diagnostics", False),
               "baby_features": getattr(args, "baby_features", False),
@@ -226,6 +231,8 @@ def main():
     parser.add_argument("--timestamps", required=True, type=relocated_path, help="One integer camera timestamp in ns per line")
     parser.add_argument("--kp0", required=True, type=relocated_path)
     parser.add_argument("--kp1", required=True, type=relocated_path)
+    parser.add_argument('--kp0-dense', type=Path, help='Optional denser cam0 keypoint cache, used inside knots by knot builds')
+    parser.add_argument('--kp1-dense', type=Path, help='Optional denser cam1 keypoint cache')
     parser.add_argument("--out", required=True, type=relocated_path, help="New experiments/<run_name> folder")
     parser.add_argument("--vrs", type=relocated_path)
     parser.add_argument("--raw-imu", type=relocated_path, help="Default: dataset/mav0/imu0/data.csv")

@@ -134,7 +134,8 @@ def runner_args(manifest, entry, case, run_dir, args):
         dry_run=True, temporal_associations=True, skip_viz=not args.with_viz,
         match_diagnostics=getattr(args, "match_diagnostics", False),
         baby_features=getattr(args, "baby_features", False),
-        debugger=getattr(args, "debugger", False))
+        debugger=getattr(args, "debugger", False),
+        kp0_dense=getattr(args, "kp0_dense", None), kp1_dense=getattr(args, "kp1_dense", None))
 
 
 def runner_command(manifest, opts):
@@ -150,6 +151,8 @@ def runner_command(manifest, opts):
         command += ["--baby-features"]
     if getattr(opts, "debugger", False):
         command += ["--debugger"]
+    if getattr(opts, "kp0_dense", None) and getattr(opts, "kp1_dense", None):
+        command += ["--kp0-dense", str(opts.kp0_dense), "--kp1-dense", str(opts.kp1_dense)]
     return command
 
 
@@ -225,6 +228,8 @@ def main():
     parser.add_argument("--match-diagnostics", action="store_true", help="Enable per-frame matcher logging without changing thresholds")
     parser.add_argument("--baby-features", action="store_true", help="Opt in to passive BabyFeature tracking with SOS-only estimator use")
     parser.add_argument("--debugger", action="store_true", help="Capture all-thread GDB backtraces if the estimator fails")
+    parser.add_argument("--kp0-dense", type=Path, help="Denser cam0 keypoint cache for knot builds (K6)")
+    parser.add_argument("--kp1-dense", type=Path, help="Denser cam1 keypoint cache for knot builds (K6)")
     args = parser.parse_args()
     if args.config and args.sequence == "all":
         parser.error("A config contains sequence-specific calibration; select one --sequence")
