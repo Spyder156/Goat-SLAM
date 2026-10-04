@@ -1,0 +1,115 @@
+{
+ "schema_version": 1,
+ "description": "Local cached full-sequence LaMAria training suite; no feature extraction or estimator execution by this planner. | VARIANT 2026-10-04: Medium keypoint caches replaced by the dense ALIKED extraction (max 3000, threshold 0.05, same binarization).",
+ "python": "/home/raghav/miniconda3/envs/lamaria/bin/python",
+ "build": "build/orbslam3_lamaria_history",
+ "vendor": "third_party/ORB_SLAM3",
+ "image": "insv/orbslam3:gdb",
+ "toolkit": "/home/raghav/workspace/MeckaAI/third_party/lamaria_toolkit",
+ "score_script": "/home/raghav/workspace/MeckaAI/Raghavs_ORB-SLAM3/pipeline/run/score_lamaria.py",
+ "startup_seconds": 120,
+ "event_context_before_seconds": 60,
+ "event_context_after_seconds": 30,
+ "sequences": {
+  "short": {
+   "sequence": "sequence_1_19",
+   "dataset": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_1_19/euroc",
+   "source_timestamps": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_1_19/euroc/timestamps.txt",
+   "supported_timestamps": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_1_19/supported_timestamps.txt",
+   "config": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_short_1_19_20261002/config/settings.yaml",
+   "calibrated_imu": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_1_19/calibrated_imu.csv",
+   "kp0": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_1_19/aliked_cam0",
+   "kp1": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_1_19/aliked_cam1",
+   "assets": "/media/raghav/HardDrive1/Mecka/lamaria/sequence_1_19",
+   "baseline": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_short_1_19_20261002",
+   "baseline_source_frames": 18352,
+   "baseline_supported_frames": 18351,
+   "baseline_estimator_wall_seconds": 778.019199,
+   "events": [
+    {
+     "name": "first_map_loss",
+     "kind": "map_loss",
+     "start_ns": 824892200762,
+     "end_ns": 831392200762
+    }
+   ],
+   "sha256": {
+    "config": "9127c9b8e807a3712321afe52685c42222fbcb52e3abc1c0cd9140822874c2fd",
+    "source_timestamps": "465fb49d4b056b53d973da63dfab6db84369e537e9e6c12a3b81f11968c7851e",
+    "supported_timestamps": "ebbcc1d26d215a491c711ed63c84c94236fd668957117bb639a0bec38a22bcf0",
+    "imu_manifest": "04b4e1a5118604fcb6b31ff5e4eb0a27dda07d243a2e8148082482c386637a89",
+    "baseline_result": "dc69402a12063ed5dbe7985d8bb8df435ec8851b21e919596dfe8440675b623a"
+   },
+   "loop_evaluation_requires_full_sequence": true
+  },
+  "medium": {
+   "sequence": "sequence_2_11",
+   "dataset": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_2_11/euroc",
+   "source_timestamps": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_2_11/euroc/timestamps.txt",
+   "supported_timestamps": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_2_11/supported_timestamps.txt",
+   "config": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_medium_2_11_20261002/config/settings.yaml",
+   "calibrated_imu": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/current_pipeline_20261002/sequence_2_11/calibrated_imu.csv",
+   "kp0": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/inputs_aliked_dense_20261004/sequence_2_11/cam0",
+   "kp1": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/inputs_aliked_dense_20261004/sequence_2_11/cam1",
+   "assets": "/media/raghav/HardDrive1/Mecka/lamaria/sequence_2_11",
+   "baseline": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_medium_2_11_20261002",
+   "baseline_source_frames": 23748,
+   "baseline_supported_frames": 23746,
+   "baseline_estimator_wall_seconds": 689.861893,
+   "events": [
+    {
+     "name": "first_map_loss",
+     "kind": "map_loss",
+     "start_ns": 851337374787,
+     "end_ns": 856737374837
+    },
+    {
+     "name": "late_map_loss",
+     "kind": "map_loss",
+     "start_ns": 1227037393837,
+     "end_ns": 1241837393837
+    }
+   ],
+   "sha256": {
+    "config": "f91e19d018459c58fe3fa101765bd3b9fcbff446cddef00e5574651af2c8cbd0",
+    "source_timestamps": "669fab8b4ba4e54bd75824ab4eb34d79c30f086eebc5ef0acb7eb6191864879a",
+    "supported_timestamps": "0181d14521a4103388347e5691ae433def1deea2dc3afa14b24ed3dffe5ef6e5",
+    "imu_manifest": "dd3e84d804dac96648b7d335cd9d6b9048587365b5c7ca8a3a50d0148ddbf536",
+    "baseline_result": "60a1281210f55132f6c1e2c853a94667c28d5d161c19d572459beb885db8212e"
+   },
+   "loop_evaluation_requires_full_sequence": true,
+   "kp_variant": "dense ALIKED 3000/0.05, pipeline/datasets/extract_aliked_dense.py"
+  },
+  "long": {
+   "sequence": "sequence_3_17",
+   "dataset": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/euroc_native_3_17",
+   "source_timestamps": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/euroc_native_3_17/timestamps.txt",
+   "supported_timestamps": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/euroc_native_3_17/timestamps.txt",
+   "config": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002/config/settings.yaml",
+   "calibrated_imu": "/home/raghav/workspace/MeckaAI/lamaria_audit_20261001/native_stereo/calibrated_imu/production_data.csv",
+   "kp0": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/aliked_kp_3_17",
+   "kp1": "/media/raghav/HardDrive1/Mecka/lamaria/bench_basalt/orbslam/aliked_kp_3_17_cam1",
+   "assets": "/media/raghav/HardDrive1/Mecka/lamaria/sequence_3_17",
+   "baseline": "/media/raghav/HardDrive1/MeckaAI/Raghavs_ORB-SLAM3/experiments/lamaria_history_full_20261002",
+   "baseline_source_frames": 35842,
+   "baseline_supported_frames": 35842,
+   "baseline_estimator_wall_seconds": 1244.821877,
+   "events": [
+    {
+     "name": "longest_coast",
+     "kind": "recovered_coasting_without_map_reset",
+     "start_ns": 1738099275925,
+     "end_ns": 1740449313925
+    }
+   ],
+   "sha256": {
+    "config": "5c9a16293a8715d5c756f199ae240d7df8203a55c6deee273ccc7868f5e70786",
+    "source_timestamps": "796b89976b02b441b34d1203196b14b2596a4b5d23e71ea4a165bc120fe0442d",
+    "supported_timestamps": "796b89976b02b441b34d1203196b14b2596a4b5d23e71ea4a165bc120fe0442d",
+    "imu_manifest": "fe3d6e3c6cf3a76fc1709e4e96194e7d416486ba5ecdb7a9ed93c5a2bbd9be15",
+    "baseline_result": "e66d634d9aa9e15bfaa8f2513d2d6ca7ca7274e2e4739027858b82da53a23bcd"
+   },
+   "loop_evaluation_requires_full_sequence": true
+  }
+ }
+}

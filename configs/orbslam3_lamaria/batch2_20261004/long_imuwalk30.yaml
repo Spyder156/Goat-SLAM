@@ -1,0 +1,96 @@
+%YAML:1.0
+File.version: "1.0"
+Camera.type: "Fisheye624"
+Camera1.fx: 241.6048925567284
+Camera1.fy: 241.6048925567284
+Camera1.cx: 322.89555577170398
+Camera1.cy: 240.4445599560633
+Camera1.k1: -0.024842433765014979
+Camera1.k2: 0.096289387521345346
+Camera1.k3: -0.063325466945624007
+Camera1.k4: 0.0062007263415692739
+Camera1.k5: 0.0034887613999633961
+Camera1.k6: -0.00072975200568564788
+Camera1.p1: 0.00089532032215904002
+Camera1.p2: 0.00036106658079001401
+Camera1.s1: -0.0013687924438700099
+Camera1.s2: -0.00010540834158535311
+Camera1.s3: -0.00046356112984882129
+Camera1.s4: -0.00010498564612626429
+Camera2.fx: 241.32727176033379
+Camera2.fy: 241.32727176033379
+Camera2.cx: 321.6189294210335
+Camera2.cy: 239.6221110493106
+Camera2.k1: -0.025403273991995271
+Camera2.k2: 0.096540667144947009
+Camera2.k3: -0.063973032718277548
+Camera2.k4: 0.0062231538947041566
+Camera2.k5: 0.003741072868202308
+Camera2.k6: -0.00079985634761262049
+Camera2.p1: 0.0017256159320966349
+Camera2.p2: -0.00099894759645466152
+Camera2.s1: -0.002626656620305424
+Camera2.s2: 4.6210872944083812e-05
+Camera2.s3: 0.0014129776716388571
+Camera2.s4: -8.4399589704298769e-05
+Camera.width: 640
+Camera.height: 480
+Camera.fps: 20
+Camera.RGB: 1
+Stereo.ThDepth: 60.0
+Stereo.b: 0.137749
+Stereo.T_c1_c2: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [0.998487612,-0.042551807,0.034811370,0.004166886,0.044484675,0.253256754,-0.966375771,-0.108609183,0.032304821,0.966462808,0.254766635,-0.084625617,0.000000000,0.000000000,0.000000000,1.000000000]
+Rig.enabled: 1
+Rig.non_overlapping: 0
+Rig.baseline_from_start: 1
+Rig.refine_rotation: 1
+Rig.refine_translation: 0
+Rig.T_c0_c1: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [0.998487612,-0.042551807,0.034811370,0.004166886,0.044484675,0.253256754,-0.966375771,-0.108609183,0.032304821,0.966462808,0.254766635,-0.084625617,0.000000000,0.000000000,0.000000000,1.000000000]
+IMU.T_b_c1: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [0.980111788,0.197635468,0.017919401,0.016782969,0.067107635,-0.245107143,-0.967170644,-0.108929218,-0.186755050,0.949137877,-0.253495249,0.076055840,0.000000000,0.000000000,0.000000000,1.000000000]
+IMU.InsertKFsWhenLost: 1
+IMU.NoiseGyro: 0.0005235987755982989
+IMU.NoiseAcc: 0.00235344
+IMU.GyroWalk: 0.0000081457009094086183
+IMU.AccWalk: 0.00021494434873370255
+IMU.Frequency: 1000.0
+ORBextractor.nFeatures: 2500
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+Lines.enabled: 0
+loopClosing: 1
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -3.5
+Viewer.ViewpointF: 500.0
+
+Tracking.coastRestore: 0
+
+# Exact method options from the 80.199161 Short run; this sequence retains its own factory calibration.
+Camera1.validRadius: 330
+Camera1.maxSolidAngle: 1.3999999999999999
+Camera2.validRadius: 330
+Camera2.maxSolidAngle: 1.3999999999999999
+Init.radialCalibrationMode: 1
+Init.metricMinSeconds: 12.0
+Calibration.fullOnline: 1
+Calibration.intervalSeconds: 60.0
