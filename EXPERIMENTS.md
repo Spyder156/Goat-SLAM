@@ -758,6 +758,137 @@ descriptor reconstructions, not recorded solver inlier IDs; 453 logged count
 comparisons agree. See `docs/BABYFEATURES_NATIVE_VI_20261004.md` for absolute paths,
 limits and provenance. Further runs are deferred for visual discussion.
 
+### E41. Read-only decomposition of the Baby Long startup, drift and tilt
+
+Before any new run, the user's three Rerun observations on S24 (missing beginning, end
+drift, apparent tilt) were decomposed from the saved outputs only, with every number
+re-derived on a second code path. New script `pipeline/eval/decompose_lamaria_errors.py`
+(Stages 0-2; 15 synthetic contracts in `pipeline/eval/test_decompose_lamaria_errors.py`),
+output `experiments/lamaria_babyfeats_long_20261003/diagnostics_startup_drift_tilt_20261004/`
+with a provenance file (`evaluation_only`, `GT_used_in_estimator: false`,
+`new_official_score: false`). No estimator, solver or Rerun change; no new score.
+
+**Tried:** preflight (input hashes, cam0 rebuild to 6e-8 m, official per-timestamp errors
+reproduced to 7e-13 m), a heading-integral test (do orientation-derived yaw errors predict
+the position error?), swing-twist about GT z, 15 m windowed displacement ratios, an
+online-vs-final stretch comparison and an event ledger (calibration commits, loops, SOS).
+
+**Established:** the 223 missing start frames are 71 before any map, 148 of a visual-only
+first map that lost tracking in a 0.5 s blur/detector-dropout burst at 163.25 s while the
+12 s IMU gate was still open, and 4 re-init frames. The end drift is local scale error born
+in live tracking (15 m-window est/GT displacement ratio 0.85-0.91 after 1800 s versus
+0.97-1.02 mid-route; yaw explains about 10 %; no SOS step moves the error by more than
+0.16 m). The start error is a 1.1 deg heading error over 282 m plus about 1 % local scale
+excess. The estimator's gravity is within 0.3 deg of GT vertical from orientations alone;
+the visible 4 deg tilt belongs to the 27-control-point Sim3, whose 13 height CPs are all
+late and sit on the drifted segment. The viewer applies exactly `CP_sim3`.
+
+**Decision:** the scale-born-in-tracking finding pointed at the inertial bias freedom and
+led directly to the IMU random-walk arm of E42.
+
+### E42. Mechanism arms after the decomposition: rollback, IMU bias walks, speed bound
+
+User steering: many runs, each carrying a real fix or idea (config-only variants were rejected),
+scored with the official local LaMAria evaluation and tabulated. Round report
+`docs/BATCH_20261004.md`; cross-run table
+`experiments/lamaria_batch2_20261004/table_r5/table.md` (25 rows, recalls and dense-GT ATE
+diagnostics). Tooling: `pipeline/run/batch_runner.py` (parallel cases, CPU-aware stall
+watchdog, attach mode), `pipeline/eval/experiment_table.py`,
+`pipeline/datasets/extract_aliked_dense.py`. All arms: Baby SOS on, one container per arm,
+4 CPUs, saved CP Sim3 only, no GT in the estimator, nothing frozen modified.
+
+**Positive.** Medium **78.590** (`coastguard_medium`: rejected-update rollback
+`Tracking.coastRestore: 1` plus a 3 m/s coast speed guard that never mattered): one map,
+17/18 CPs within 1 m, median 0.35 m, level with the Meta Medium reference 78.5. Rerun
+verified at `experiments/lamaria_batch2_20261004/coastguard_medium/evaluation_baby_20261004/run.rrd`.
+Medium 74.408 (`coastguard_imuwalk10_medium`: rollback + IMU bias random walks /10): the only
+Medium run whose maximum error stays under 2.1 m end to end (final coast tamed, last CP
+1.70 m) at the cost of 1.5 m drift over the last 250 s. Long **49.186** (`imuwalk10_long`,
+walks /10; Rerun verified at `.../imuwalk10_long/evaluation_baby_20261004/run.rrd`), 50.042
+with 1x noise densities (`imuwalk10dens1x_long`), 49.415 with offline fixed-camera VI on the
+49.19 graph; Long 45.411 with walks /30 (tightest tail, max 4.3 m, but mid-route 2.2-2.8 m).
+Short 81.393 (`imuwalk10_short`, 14/14 CPs; within run noise of the frozen 80.20).
+
+**Negative, recorded with the reason.** Gyro-only pre-init coasting (Medium 37.64, Long
+18.29: the kept startup map initialises worse). Coast-age-widened projection search
+(Medium 21.75: wrong relatches during a 57 s coast). Dense ALIKED caches, 3000 keypoints at
+threshold 0.05 (Medium 44.66, Long 36.16: more keypoints, worse geometry). A soft pedestrian
+speed bound (|v| <= 2.2 m/s, sigma 0.01, `patches/orbslam3_lamaria_speedprior_20261004`) in
+pose-only inertial optimisation, local inertial BA, the Baby solver and IMU propagation
+(Medium 19.98: the pose-only prior fights the fixed map whenever the estimate exceeds the
+bound, the run coasts 840-940 s and a mid-route kink misfits the single Sim3; the tail was
+bounded, 10 m instead of 222 m). Walks /10 alone on Medium split at 882 s (56.77). Rollback
+on Long (44.19 and, with walks /10, 38.47) drew bad startup lotteries; its one 103 m tail came
+from coasts at 3-7 m/s on a poisoned velocity.
+
+**Mechanistic facts established.** GT walking speed never exceeds 1.84 m/s on any sequence
+(read-only check); the estimator reached 2.5-5 m/s only where scale crept or a coast ran on a
+bad velocity. The Medium 860-890 s split is an inertial-state failure (a rejected visual
+update leaves 6.7 m/s in the frame; coasting then diverges to 41 m/s), cured by rollback. The
+Long end drift is bias-absorbed scale creep, cured by /10 random walks; /30 over-constrains.
+Long run-to-run spread (38.5-50.0 with one map each) follows the startup lottery (early CPs
+4-8 m; worst with three pre-init resets). Periodic full-map calibration trials on 1,400-1,650
+keyframes take 10-25 min each, single-threaded; the watchdog must be CPU-aware.
+
+**Contracts.** 14 native Baby solver checks on every new library; 11 (12 for the tail variant)
+speed-bound checks (analytic Jacobian versus central differences, bound reached along the
+velocity direction, untouched below the bound, equal-information compromise, propagation
+clamp); a 120 s Medium startup replay with zero firings and one map before the full arms.
+
+**Tail-only variant** (`patches/orbslam3_lamaria_speedprior_tail_20261004`, bound only on
+Baby-solver and IMU-propagated velocities): Medium 16.17, negative. Clamping the propagated
+velocity after the position has been propagated with the unclamped one leaves an inconsistent
+prediction; from 640 s matching fails, 2,159 frames coast and the error reaches 28-54 m by
+600-800 s while the same configuration without the bound scored 78.59. The speed bound is
+dropped in every form. Long 45.23 with the bound never firing: a repeat of the 49.19
+configuration with identical startup (retained map from 163.35 s), so the Long run-to-run
+spread is about ±2 even without the startup lottery. Table:
+`experiments/lamaria_batch2_20261004/table_r5/table.md` (25 rows).
+
+### E43. Round 3: reproducibility repeats, bias hold, Baby assist before loss
+
+User steering: name the workers, what each implements, which problem it solves and what to expect;
+Baby support may act before tracking is lost but main tracks must dominate and Baby landmarks stay out
+of the map. Report `docs/BATCH3_20261004.md`; table
+`experiments/lamaria_batch3_20261004/table_r1/table.md`.
+
+**Repeats (W1-W3), byte-identical configs:** Short 79.79 (was 81.39): Short is 80 +-1 for every config
+tried. Medium 25.35 (was 78.59, one map both times) and 61.37 with a split at 842 s (was 74.41): Medium
+is decided between 640 and 944 s, where the open plaza thins tracking and Baby bridges; the 78.59 run
+drew no mid-route blackout. Long 49.19 / 45.23 / 50.37 on one config: spread about +-2.5.
+
+**Bias hold during visual starvation (W4 Medium 61.74, W5 Long 50.37;
+`patches/orbslam3_lamaria_biashold_20261004`).** Biases held exactly (deviation 0 in all 39 and 14
+windows) while coasting, RECENTLY_LOST or Baby-bridged; 9 contract checks. Neutral: the Medium runaway
+coast (840-944 s, 17 m/s, split) happened with biases frozen. Its accepted Baby solves changed the frame
+velocity by 1.14 m/s per frame on average (max 4.59, bound 5), against 0.036 m/s in a surviving bridge.
+
+**Baby assist before loss (W6 Long 46.90, W7 Medium 82.88;
+`patches/orbslam3_lamaria_babyassist_20261004`).** Monitor: previous-frame inliers below 80 or local-map
+matches below 5 % of keypoints for five frames (thresholds calibrated on healthy frames: the 10 % ratio
+fired on 12-16 % of frames and was rejected). One Baby window solve on a copy of the frame with
+ordinary-tracked frames fixed; verified landmarks enter the pose-only inertial optimisation as
+temporaries with information x 0.2 and Huber, never as MapPoints; 10 contract checks. Long: active on
+4.3 % of frames, no effect on the 1700-1760 s step, within spread. **Medium 82.88, one map, 17/18 CPs
+within 1 m, max error 4.0 m, above the Meta reference 78.5:** assist on 7.6 % of frames carrying 11 % of
+the map cost; the 640 s and 760 s blackouts shrank to 10 and 5 frames (repeat without assist: 176 and
+403), the 840 s coast and the 1220 s tail were survived at walking speed. One sample so far.
+
+**Second half of the round (user: launch repeats, W8, W9; test the knot idea; try global VI).**
+Two byte-identical repeats of the 82.88 run scored 56.79 and 61.33, both one map: with assist every
+Medium run kept one map (4 of 4) but accuracy varies with the draw (a slow 2 % scale drift through
+500 s of thin tracking; a 17 s blackout whose bridge deformed the map; the final-section loss running
+away in two of four). W8 assist + hold + kinematic gate (`patches/orbslam3_lamaria_assist_kin_20261004`):
+35.17, three maps, negative: 89 rejected bridge solves (steps 0.50-1.83 m/s) let two SOS episodes expire.
+W9 assist + hold + gate + stereo-fused Baby tracks (`patches/orbslam3_lamaria_assist_stereo_20261004`,
+17 solver checks): 62.95, one map, mid-route bridges consistent but only about 13 left-right pairs per
+frame; neutral. Knot test (read-only): control-point error equals the trajectory error at the tag frames
+(median ratio 0.96-1.00 on all sequences), so local accuracy at the tags cannot move the score; only
+tags as metric scale anchors or loop closures (one revisited tag, Medium) could. Offline fixed-camera VI
+on finished runs: Medium 82.88 -> 82.53 (18/18 CPs within 1 m), Long 50.37 -> 49.08; not a lever; the
+export tool gained `--missing-reference nearest`. Table
+`experiments/lamaria_batch3_20261004/table_r2/table.md` (18 rows).
+
 ## 4. What these results establish and what they do not
 
 1. The user's insistence on end-to-end geometry was justified: bearing contracts, map units versus a metric baseline, camera-specific indices/observations, invalid-domain inversion, and recovery state consistency all contained real issues. The correct response is to trace complete geometry/state contracts, not move the cloud until it looks right.
