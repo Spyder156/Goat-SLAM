@@ -519,6 +519,38 @@ track persistence, keyframe insertion and triangulation rates, then continuity
 and score. Test this separately from Baby SOS and recovery-window changes so the
 result remains interpretable. Do not replace healthy v2 tracking by default.
 
+## I17. Pedestrian speed bound, but only on velocities nothing else anchors
+
+Measured on the evaluation GT (read-only, never inside the estimator): the 1 s-window walking speed
+never exceeds 1.84 m/s on Short, Medium or Long, and standstills are rare and short (2-3 % of the
+time, under 3 s). The estimator, however, reported 2.5-5 m/s whenever its local scale crept (Medium
+1170-1256 s) or a coast ran on a poisoned velocity (Long 1820-1944 s in one run). A one-sided soft
+prior |v| <= 2.2 m/s was built (`patches/orbslam3_lamaria_speedprior_20261004`). Lesson from the
+19.98 Medium result: inside pose-only inertial optimisation the prior fights the fixed map, the pose
+lags, inliers fall and the run coasts; the mid-route kink then ruins the single control-point Sim3.
+The same prior on the Baby solver and on IMU propagation bounded the final tail (10 m instead of
+222 m). The tail-only variant (`..._speedprior_tail_20261004`) was also negative (Medium 16.17): the
+propagation clamp changes the velocity after the position has already been propagated with it, so the
+prediction handed to matching is inconsistent and tracking coasts. If this is ever retried, the bound
+must act on a complete state (position and velocity together, or only inside an optimisation whose map
+points are free) and never on the frame prediction.
+
+## I18. Long startup lottery: initialisation repeatability before more end-of-route work
+
+Five Long runs with one map each scored 38.5-50.0. Their early control points (AA0348/AA1812/AA3013)
+ranged 4-8 m, and the runs with three pre-init resets (retained map from 166.0 s) were the worst;
+the end segments differed less once bias random walks were /10. The 1.1 deg early heading error found
+by the decomposition is therefore the cheapest Long lever: make the first metric initialisation
+repeatable (or re-anchor yaw after the first calibration commit) before touching anything else.
+
+## I19. Medium final coast: give ordinary tracking something to relatch to
+
+In the 78.59 run the last 35 s lose ordinary tracking (local map 139 points, 0-13 inliers) while the
+Baby solver keeps accepting updates whose velocities reach 4-12 m/s (its own sanity bound is 20 m/s).
+Two mechanisms, both consistent with the Baby design: bound the Baby/coast velocities (I17 tail
+variant) and promote Baby-triangulated landmarks into the map during a long SOS so the ordinary
+pipeline can relatch (the original BabyLandmarks idea).
+
 ## Wider idea inventory — retained, not the current discussion scope
 
 The detailed hypotheses, attempted work, and scores remain in `ROADMAP.md` and
