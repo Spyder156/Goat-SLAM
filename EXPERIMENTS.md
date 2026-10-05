@@ -915,9 +915,9 @@ worse.
 
 **W11 assist + IMU walks /10 (`babyassist` build, config only).** Medium 69.58 / 83.92 / 49.11, one map each;
 Short 89.17 / 84.20, all 14 control points within 1 m both times. The third Medium sample lost tracking for
-29 s at 845 s: a calibration step rewrote the map at 820 s and the Baby window was reset 8 times by
-`map_update` (a and b saw the same step with 19-23 resets and tracked through), ordinary tracking fell to one
-inlier at 821.4 s, coasting ran away (6.3 m/s) and the re-latched state was wrong; whole map deformed (Sim3 scale 0.980, 16/18 control points 1-5 m off). Best Short and Medium so
+29 s at 845 s: a calibration step ran at 820 s (rejected, nothing committed) and the Baby window was reset 8 times by
+local-mapping `map_update` events (a and b saw the same step with 19-23 resets and tracked through), ordinary
+tracking fell to one inlier at 821.4 s, coasting ran away (6.3 m/s) and the re-latched state was wrong; whole map deformed (Sim3 scale 0.980, 16/18 control points 1-5 m off). Best Short and Medium so
 far; Medium not reproducible.
 
 **W12 sequential deterministic mode (`patches/orbslam3_lamaria_sequential_20261005`).** After each
