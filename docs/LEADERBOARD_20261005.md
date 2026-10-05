@@ -3,7 +3,7 @@
 Raghav-Slam rows are our official local scores (same toolkit and control-point protocol as the website)
 on the three controlled training recordings, one run each: Short `w11_assist_walk10_short` (Baby assist before
 loss + rollback + IMU walks /10), Medium `w11_assist_walk10_medium_b` (same method), Long `w14a_fused_long`
-(Baby + walks /10 + bias hold on the fused left+right virtual IMU). Updated 2026-10-05 after round 4
+(Baby assist + IMU walks /10 on the fused left+right virtual IMU, no bias hold). Updated 2026-10-05 after round 4
 (previous entry: 81.4 / 82.9 / 50.4). The leaderboard rows are website test-set results; categories are not directly comparable to
 one training recording. Low light and moving platform: not run. Sorted by Short score.
 
