@@ -895,26 +895,29 @@ User steering: run W10a-d, W11 and W12, then W13 and W14; code everything first,
 results by morning. Report `docs/BATCH4_20261005.md`; table
 `experiments/lamaria_batch4_20261005/table_r1/table.md`; leaderboard `docs/LEADERBOARD_20261005.md`.
 
-**Knot detector (read-only test, confirmed the user's hypothesis).** Inside every control-point window the
-gyro RMS is 1.3-1.7 rad/s (0.7 walking) and the speed about 0.5 m/s (1.4 walking). A 10 s-median detector
-(speed below 0.8 m/s, gyro above 1.1 rad/s, at least 8 s) finds 17/17 Medium and 27/27 Long control points
-with no false segment; every tracking loss of every run sits inside a knot; the stock keyframe rule inserts
+**Knot detector (read-only test, confirmed the user's hypothesis).** In 57 of 58 control-point windows the
+gyro RMS is 1.2-1.8 rad/s (0.7 walking) and the speed 0.3-0.6 m/s (1.4 walking); the exception is the 208 s
+AA1812 window on Medium, which averages walking. A 10 s-median detector (speed below 0.8 m/s, gyro above
+1.1 rad/s, at least 8 s) overlaps 17/17 Medium and 27/27 Long control-point windows offline with no false
+segment (inside the runs it covered 15 of 17 Medium windows); every tracking-loss section examined (four on
+Medium, two on Long) lies inside a knot; the stock keyframe rule inserts
 keyframes 35 deg apart there (p90 140 deg).
 
 **Knot regime W10a-d (`patches/orbslam3_lamaria_knot_20261005` plus wide / dense / stationary variants),
 negative.** Rev 1 (10 deg rotation keyframes, Baby landmarks promoted inside knots without caps): promotion
-flood of 3,000-7,000 landmarks per knot; Medium 30.04 (one map) and 59.81 (three maps); Long crashed
-(SIGSEGV in cv::BFMatcher::knnMatch inside SeedTemporalLandmarks while KeyFrameCulling ran). Rev 2 (15 deg,
+flood of 1,500-8,300 landmarks per knot; Medium 30.04 (one map) and 59.81 (three maps); Long crashed
+(SIGSEGV in the mapper: LocalMapping::KeyFrameCulling -> KeyFrame::SetBadFlag -> ChangeParent -> AddChild on
+an invalid KeyFrame pointer, while the tracker was in cv::BFMatcher::knnMatch). Rev 2 (15 deg,
 0.2 s gap, caps 30 per keyframe and 300 per knot, matcher guard): Medium 18.38, Long 42.79, dense features
 47.82 (two maps), wide projection search 59.92 (two maps), near-stationary prior 1.78; one more identical
-crash. Detector kept, regime dropped: more keyframes and promoted landmarks inside knots make the bridges
+crash (the rev-2 matcher guard sat on the non-faulting thread). Detector kept, regime dropped: more keyframes and promoted landmarks inside knots make the bridges
 worse.
 
 **W11 assist + IMU walks /10 (`babyassist` build, config only).** Medium 69.58 / 83.92 / 49.11, one map each;
 Short 89.17 / 84.20, all 14 control points within 1 m both times. The third Medium sample lost tracking for
-29 s at 845 s: a calibration step rewrote the map at 820 s, the Baby window was reset eleven times by
-`map_update`, ordinary tracking fell to one inlier, coasting ran away (6.3 m/s) and the re-latched state
-was wrong; whole map deformed (Sim3 scale 0.980, 16/18 control points 1-5 m off). Best Short and Medium so
+29 s at 845 s: a calibration step rewrote the map at 820 s and the Baby window was reset 8 times by
+`map_update` (a and b saw the same step with 19-23 resets and tracked through), ordinary tracking fell to one
+inlier at 821.4 s, coasting ran away (6.3 m/s) and the re-latched state was wrong; whole map deformed (Sim3 scale 0.980, 16/18 control points 1-5 m off). Best Short and Medium so
 far; Medium not reproducible.
 
 **W12 sequential deterministic mode (`patches/orbslam3_lamaria_sequential_20261005`).** After each
@@ -931,13 +934,14 @@ T_c0_c1 into its functors; magnitude check and plan in the report).
 (`experiments/imu_left_20261005`). W14a virtual fused IMU (`pipeline/datasets/fuse_aria_imus.py`: gyro
 average after rotating left into right; left accelerometer transported through the 129 mm lever arm with
 alpha x r + omega x (omega x r), residual 1.14 -> 0.14 m/s2; `imu-fused` manifests): Long 54.33 / 48.55
-(right-IMU bias-hold config 49.19 / 45.23 / 50.37), Medium 9.16 (scale collapse 0.84 after the plaza
-bridge ran away). W14b binocular IMU: not attempted.
+(same build on the right IMU: 46.90; earlier right-IMU walks /10 builds 49.19 / 45.23 / 50.37), Medium 9.16
+(scale collapse 0.84 after the plaza bridge coasted at up to 7.8 m/s). W14b binocular IMU: not attempted.
 
 **Verdict.** New bests Short 89.17, Medium 83.92, Long 54.33, one sample each (Reruns in
 `/home/raghav/workspace/MeckaAI/LamariaRERUNS`). Nothing in this round made Medium reproducible: each bad
 sample is one race around a calibration or map update inside a knot. Negative: knot regime (all variants),
-near-stationary prior. Within spread: fused IMU on Long (+3 mean, n=2 against n=3). Not measured before:
+near-stationary prior. Fused IMU on Long: +7.4 and +1.6 over the same build on the right IMU (one right-IMU sample), inside the
++-2.5 spread of the earlier right-IMU builds; not yet separable from noise. Not measured before:
 the online calibration step costs minutes to tens of minutes on Medium near the end of the sequence.
 
 ## 4. What these results establish and what they do not
